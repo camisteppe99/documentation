@@ -1,0 +1,118 @@
+{
+  "$schema": "https://mintlify.com/docs.json",
+  "theme": "luma",
+  "name": "Kellogg Ticket Hub",
+  "colors": {
+    "primary": "#242b2c",
+    "light": "#6a6a6d",
+    "dark": "#ebeaea"
+  },
+  "favicon": "https://media.brand.dev/bbb21190-6987-4c67-9b0d-d149e82e27b6.png",
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Documentation",
+        "groups": [
+          {
+            "group": "Get Started",
+            "pages": [
+              "introduction",
+              "quickstart",
+              "authentication"
+            ]
+          },
+          {
+            "group": "Core Concepts",
+            "pages": [
+              "concepts/events",
+              "concepts/tickets",
+              "concepts/customers",
+              "concepts/payments"
+            ]
+          },
+          {
+            "group": "Guides",
+            "pages": [
+              "guides/purchasing-tickets",
+              "guides/managing-orders",
+              "guides/refunds-cancellations",
+              "guides/payment-methods"
+            ]
+          },
+          {
+            "group": "Integrations",
+            "pages": [
+              "integrations/webhooks",
+              "integrations/checkout"
+            ]
+          },
+          {
+            "group": "Support",
+            "pages": [
+              "support/faq",
+              "support/troubleshooting"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "API Reference",
+        "groups": [
+          {
+            "group": "Overview",
+            "pages": [
+              "api/overview",
+              "api/authentication",
+              "api/errors"
+            ]
+          },
+          {
+            "group": "Tickets & Events",
+            "pages": [
+              "api/events",
+              "api/tickets",
+              "api/checkout-sessions"
+            ]
+          },
+          {
+            "group": "Payments",
+            "pages": [
+              "api/payment-intents",
+              "api/payment-methods",
+              "api/refunds"
+            ]
+          },
+          {
+            "group": "Customers",
+            "pages": [
+              "api/customers",
+              "api/orders"
+            ]
+          },
+          {
+            "group": "Webhooks",
+            "pages": [
+              "api/webhooks"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "navbar": {
+    "links": [
+      {
+        "label": "Support",
+        "href": "mailto:support@kellogg.edu"
+      }
+    ],
+    "primary": {
+      "type": "button",
+      "label": "Get Tickets",
+      "href": "https://kelloggtickethub.com"
+    }
+  },
+  "footer": {
+    "socials": {}
+  }
+}

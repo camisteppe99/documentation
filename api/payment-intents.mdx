@@ -1,0 +1,191 @@
+---
+title: "Payment Intents API: Create and Confirm Ticket Payments"
+sidebarTitle: "Payment Intents"
+description: "Create, confirm, and capture payment intents to build custom ticket purchase flows with full lifecycle control over Stripe-powered transactions."
+---
+
+Payment Intents represent the full lifecycle of a ticket payment. While most ticket purchases use Checkout Sessions, the Payment Intents API gives you lower-level control for custom payment flows — letting you manage each step from creation through confirmation and capture.
+
+<Note>
+  For most use cases, use [Checkout Sessions](/api/checkout-sessions) instead of Payment Intents directly. Checkout Sessions handle payment collection, 3D Secure authentication, and ticket fulfillment automatically — without extra integration work on your end.
+</Note>
+
+---
+
+## Retrieve a Payment Intent
+
+**`GET /v1/payment_intents/{id}`**
+
+Retrieves the details of an existing payment intent by its ID.
+
+### Path parameters
+
+<ParamField path="id" type="string" required>
+  The unique identifier of the payment intent to retrieve, prefixed with `pi_`.
+</ParamField>
+
+### Example request
+
+<CodeGroup>
+
+```bash cURL
+curl https://api.kelloggtickethub.com/v1/payment_intents/pi_abc123 \
+  -H 'Authorization: Bearer YOUR_API_KEY'
+```
+
+</CodeGroup>
+
+### Example response
+
+```json
+{
+  "id": "pi_abc123",
+  "object": "payment_intent",
+  "amount": 5000,
+  "currency": "usd",
+  "status": "succeeded",
+  "payment_method": "pm_card_visa",
+  "customer": "cus_abc123",
+  "created": 1700000000,
+  "description": "2x Standard tickets — Kellogg Leadership Summit 2025",
+  "receipt_email": "buyer@kellogg.edu"
+}
+```
+
+### Payment Intent statuses
+
+| Status | Meaning |
+|---|---|
+| `requires_payment_method` | Waiting for card details to be provided |
+| `requires_confirmation` | Ready to confirm; all required fields are set |
+| `requires_action` | Customer must complete an additional action (e.g., 3D Secure) |
+| `processing` | Payment is in progress |
+| `succeeded` | Payment is complete and tickets have been issued |
+| `canceled` | Payment was cancelled before completion |
+
+---
+
+## Create a Payment Intent
+
+**`POST /v1/payment_intents`**
+
+Creates a new payment intent for a custom checkout flow. You control when the payment is confirmed and captured.
+
+### Request body
+
+<ParamField body="amount" type="integer" required>
+  The amount to charge in cents. For example, `5000` represents $50.00 USD.
+</ParamField>
+
+<ParamField body="currency" type="string" required>
+  The currency for the transaction. Must be `usd`.
+</ParamField>
+
+<ParamField body="event_id" type="string" required>
+  The unique identifier of the event for which tickets are being purchased (e.g., `evt_abc123`).
+</ParamField>
+
+<ParamField body="ticket_type_id" type="string" required>
+  The identifier of the ticket type being purchased (e.g., `tt_std`).
+</ParamField>
+
+<ParamField body="quantity" type="integer" required>
+  The number of tickets to purchase. Must be a positive integer.
+</ParamField>
+
+<ParamField body="payment_method" type="string">
+  An existing payment method ID to attach to this intent. If omitted, you must supply one before confirming.
+</ParamField>
+
+<ParamField body="confirm" type="boolean">
+  If `true`, the payment intent is confirmed immediately upon creation. Defaults to `false`.
+</ParamField>
+
+<ParamField body="receipt_email" type="string">
+  The email address to send the purchase receipt to after a successful payment.
+</ParamField>
+
+### Example request
+
+<CodeGroup>
+
+```bash cURL
+curl -X POST https://api.kelloggtickethub.com/v1/payment_intents \
+  -H 'Authorization: Bearer YOUR_API_KEY' \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "amount": 5000,
+    "currency": "usd",
+    "event_id": "evt_abc123",
+    "ticket_type_id": "tt_std",
+    "quantity": 2,
+    "receipt_email": "buyer@kellogg.edu"
+  }'
+```
+
+</CodeGroup>
+
+### Example response
+
+```json
+{
+  "id": "pi_abc123",
+  "object": "payment_intent",
+  "amount": 5000,
+  "currency": "usd",
+  "status": "requires_payment_method",
+  "event_id": "evt_abc123",
+  "ticket_type_id": "tt_std",
+  "quantity": 2,
+  "receipt_email": "buyer@kellogg.edu",
+  "created": 1700000000
+}
+```
+
+---
+
+## Confirm a Payment Intent
+
+**`POST /v1/payment_intents/{id}/confirm`**
+
+Confirms a payment intent, initiating the charge against the attached payment method. You must supply a `payment_method` if one was not attached at creation time.
+
+### Path parameters
+
+<ParamField path="id" type="string" required>
+  The unique identifier of the payment intent to confirm, prefixed with `pi_`.
+</ParamField>
+
+### Request body
+
+<ParamField body="payment_method" type="string">
+  The payment method ID to use for this confirmation (e.g., `pm_card_visa`). Required if no payment method is already attached to the intent.
+</ParamField>
+
+### Example request
+
+<CodeGroup>
+
+```bash cURL
+curl -X POST https://api.kelloggtickethub.com/v1/payment_intents/pi_abc123/confirm \
+  -H 'Authorization: Bearer YOUR_API_KEY' \
+  -H 'Content-Type: application/json' \
+  -d '{"payment_method": "pm_card_visa"}'
+```
+
+</CodeGroup>
+
+### Example response
+
+```json
+{
+  "id": "pi_abc123",
+  "object": "payment_intent",
+  "amount": 5000,
+  "currency": "usd",
+  "status": "succeeded",
+  "payment_method": "pm_card_visa",
+  "receipt_email": "buyer@kellogg.edu",
+  "created": 1700000000
+}
+```

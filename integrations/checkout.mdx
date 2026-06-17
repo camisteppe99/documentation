@@ -1,0 +1,185 @@
+---
+title: 'Integrate Kellogg Ticket Hub Checkout Into Your Application'
+sidebarTitle: 'Checkout'
+description: 'Integrate the Kellogg Ticket Hub Stripe-powered Checkout Sessions API into your app to accept ticket payments with minimal server code.'
+---
+
+You can embed Kellogg Ticket Hub's Stripe-powered checkout flow directly into your website or app using the Checkout Sessions API. When a customer selects a ticket, your server creates a Checkout Session and Stripe handles the entire payment experience — including card collection, 3D Secure authentication, and receipt emails — so you never touch raw card data.
+
+## Integration Approaches
+
+Choose the integration style that best fits your application's user experience requirements:
+
+<CardGroup cols={2}>
+  <Card title="Hosted Checkout" icon="arrow-up-right-from-square">
+    Redirect users to Stripe's hosted payment page. This is the simplest option and is PCI-compliant by default — Stripe handles all sensitive data on their own domain.
+  </Card>
+  <Card title="Embedded Checkout" icon="code">
+    Embed the Stripe payment form directly inside your page using Stripe.js. Your users never leave your site, giving you full control over the surrounding UI.
+  </Card>
+</CardGroup>
+
+<Note>
+  Both approaches use the same Checkout Sessions API. The difference is whether you redirect the user to `session.url` (hosted) or mount the Stripe Elements form using `session.client_secret` (embedded).
+</Note>
+
+## Hosted Checkout (Redirect Flow)
+
+The hosted redirect flow is the fastest path to accepting payments. Your server creates a session, and you send the user to Stripe's secure payment page.
+
+<Steps>
+  <Step title="Create a Checkout Session">
+    From your server, send a `POST` request to `/v1/checkout/sessions` with the event, ticket type, quantity, and redirect URLs:
+
+    ```bash
+    curl -X POST https://api.kelloggtickethub.com/v1/checkout/sessions \
+      -H 'Authorization: Bearer YOUR_API_KEY' \
+      -H 'Content-Type: application/json' \
+      -d '{
+        "event_id": "evt_abc123",
+        "ticket_type_id": "tkt_vip",
+        "quantity": 1,
+        "customer_email": "attendee@kellogg.edu",
+        "success_url": "https://yourapp.com/success?session_id={CHECKOUT_SESSION_ID}",
+        "cancel_url": "https://yourapp.com/events/evt_abc123"
+      }'
+    ```
+
+    <Note>
+      The `{CHECKOUT_SESSION_ID}` placeholder in `success_url` is automatically replaced by Stripe with the real session ID when the customer completes payment. This lets you retrieve the session on your success page without storing state server-side.
+    </Note>
+  </Step>
+  <Step title="Redirect the User">
+    The API response includes a `url` field. Redirect your user to that URL to begin the Stripe-hosted payment flow:
+
+    ```javascript
+    // Node.js / Express example
+    const session = await createCheckoutSession(params);
+    res.redirect(303, session.url);
+    ```
+  </Step>
+  <Step title="Stripe Collects Payment">
+    Stripe displays the hosted checkout page, collects the customer's payment details, handles authentication, and processes the charge. Your servers are not involved at this step.
+  </Step>
+  <Step title="Handle the Redirect Back">
+    After a successful payment, Stripe redirects the customer to your `success_url` with the `session_id` query parameter appended. Use that ID to retrieve the session and confirm the order:
+
+    ```javascript
+    // On your /success page handler
+    const sessionId = req.query.session_id;
+    const session = await fetch(
+      `https://api.kelloggtickethub.com/v1/checkout/sessions/${sessionId}`,
+      { headers: { Authorization: `Bearer ${process.env.API_KEY}` } }
+    ).then(r => r.json());
+
+    if (session.payment_status === 'paid') {
+      // Safe to display confirmation — but always back this up with webhooks
+    }
+    ```
+  </Step>
+</Steps>
+
+## Retrieve a Completed Session
+
+You can fetch a Checkout Session at any time using its ID:
+
+```bash
+curl https://api.kelloggtickethub.com/v1/checkout/sessions/cs_abc123 \
+  -H 'Authorization: Bearer YOUR_API_KEY'
+```
+
+A completed session looks like this:
+
+```json
+{
+  "id": "cs_abc123",
+  "object": "checkout.session",
+  "status": "complete",
+  "payment_status": "paid",
+  "event_id": "evt_abc123",
+  "ticket_type_id": "tkt_vip",
+  "quantity": 1,
+  "amount_total": 5000,
+  "currency": "usd",
+  "customer_details": {
+    "email": "attendee@kellogg.edu",
+    "name": "Jordan Smith"
+  },
+  "tickets": [
+    {
+      "id": "tix_01jk9x2m4r",
+      "status": "confirmed",
+      "seat": "Section A, Row 3, Seat 12"
+    }
+  ],
+  "created": 1700000000,
+  "expires_at": 1700086400
+}
+```
+
+| Field | Description |
+|-------|-------------|
+| `status` | `open`, `complete`, or `expired` |
+| `payment_status` | `unpaid`, `paid`, or `no_payment_required` |
+| `amount_total` | Total charged in the smallest currency unit (e.g., cents) |
+| `customer_details` | Name and email collected during checkout |
+| `tickets` | Array of issued ticket objects, populated after payment |
+
+## Handling Success and Cancellation
+
+<CardGroup cols={2}>
+  <Card title="On success_url" icon="circle-check">
+    Display an order confirmation using the `session_id` from the query string. You can retrieve the session to show ticket details. However, **never use the redirect alone to fulfill orders** — use webhooks for reliable fulfillment.
+  </Card>
+  <Card title="On cancel_url" icon="circle-xmark">
+    The session remains `open` and has not been charged. Show the user a retry prompt or direct them back to the event page. You can reuse the same `session.url` to return them to the checkout.
+  </Card>
+</CardGroup>
+
+<Warning>
+  Do not fulfill orders based on the redirect URL alone. A user can manually navigate to your `success_url` without completing payment, or the redirect can be skipped entirely if their browser crashes. Always confirm fulfillment by handling the `checkout.session.completed` webhook or by checking `payment_status === 'paid'` via the API.
+</Warning>
+
+Always listen for the `checkout.session.completed` webhook event to reliably trigger fulfillment:
+
+```javascript
+// Webhook handler (see the Webhooks guide for full verification setup)
+case 'checkout.session.completed': {
+  const session = event.data.object;
+  if (session.payment_status === 'paid') {
+    await fulfillOrder(session.id);
+  }
+  break;
+}
+```
+
+## Session Expiration
+
+<Note>
+  Checkout Sessions expire **24 hours** after creation. Once a session expires, its `status` becomes `expired` and the `url` is no longer usable. If a customer tries to pay after expiration, create a new session and redirect them again.
+</Note>
+
+```javascript
+// Check before redirecting a returning user
+if (session.status === 'expired') {
+  const newSession = await createCheckoutSession(params);
+  res.redirect(303, newSession.url);
+}
+```
+
+## Common Issues
+
+<AccordionGroup>
+  <Accordion title="The success_url redirect arrives without a session_id">
+    Confirm that you included the `{CHECKOUT_SESSION_ID}` literal placeholder in your `success_url` when creating the session. This exact string is required — Stripe replaces it with the real ID at redirect time. If you omit it, the query parameter will not be appended.
+  </Accordion>
+  <Accordion title="Payment status shows 'unpaid' after redirect">
+    This can happen if the customer's payment is still being processed (common with bank redirects or delayed payment methods). Do not rely solely on the redirect — wait for the `checkout.session.completed` webhook, which fires only after payment is confirmed.
+  </Accordion>
+  <Accordion title="I need to pre-fill the customer's email">
+    Pass `customer_email` when creating the session. Ticket Hub forwards this to Stripe, which pre-fills the email field on the checkout page and associates the payment with a Stripe Customer object automatically.
+  </Accordion>
+  <Accordion title="How do I test checkout without real payments?">
+    Use your **test mode API key** (prefixed with `sk_test_`). In the hosted checkout form, use Stripe's test card number `4242 4242 4242 4242` with any future expiry date, any 3-digit CVC, and any billing ZIP. Test mode sessions behave identically to live sessions but never charge real cards.
+  </Accordion>
+</AccordionGroup>

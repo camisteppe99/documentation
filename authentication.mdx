@@ -1,0 +1,96 @@
+---
+title: "Authenticating Requests to the Kellogg Ticket Hub API"
+sidebarTitle: "Authentication"
+description: "Learn how Kellogg Ticket Hub API keys work, where to find yours in the dashboard, and how to pass it in every request's Authorization header."
+---
+
+Kellogg Ticket Hub uses API key authentication to secure every request to its REST API. Each time you call an API endpoint, you must include your secret API key in the `Authorization` header. Without a valid key, the API rejects your request with a `401 Unauthorized` error.
+
+## Getting Your API Key
+
+Follow these steps to generate your API key from the Kellogg Ticket Hub dashboard:
+
+<Steps>
+  <Step title="Open API Keys Settings">
+    Log in to your Kellogg Ticket Hub account and navigate to **Settings → API Keys** in the left sidebar.
+  </Step>
+  <Step title="Generate a New Key">
+    Click **Generate new key**. Give the key a descriptive name (for example, `Production App` or `Local Development`) so you can identify it later.
+  </Step>
+  <Step title="Copy and Store Your Key">
+    Copy the API key immediately and store it somewhere secure — such as a password manager or a secrets vault. **The key is only displayed once.** If you lose it, you must revoke it and generate a new one.
+  </Step>
+</Steps>
+
+<Warning>
+  Never expose your API key in client-side code, public GitHub repositories, or anywhere accessible outside your secure server environment. If your key is compromised, revoke it immediately from **Settings → API Keys**.
+</Warning>
+
+## Making Authenticated Requests
+
+Pass your API key as a **Bearer token** in the `Authorization` header of every request. Replace `kth_live_sk_...` with your actual key.
+
+<CodeGroup>
+  ```bash cURL
+  curl https://api.kelloggtickethub.com/v1/events \
+    -H 'Authorization: Bearer kth_live_sk_...'
+  ```
+
+  ```javascript JavaScript
+  const response = await fetch('https://api.kelloggtickethub.com/v1/events', {
+    headers: {
+      'Authorization': 'Bearer kth_live_sk_...',
+      'Content-Type': 'application/json'
+    }
+  });
+  const data = await response.json();
+  ```
+</CodeGroup>
+
+All requests must be made over **HTTPS**. Requests sent over plain HTTP are rejected.
+
+## API Key Types
+
+Kellogg Ticket Hub issues two types of API keys, each suited to a different environment:
+
+<Tabs>
+  <Tab title="Live Keys">
+    Live keys are prefixed with `kth_live_sk_` and are used for **production** traffic. Requests made with a live key trigger real payment charges and generate real tickets.
+
+    Use live keys only in your production environment, and never share them with third parties.
+  </Tab>
+  <Tab title="Test Keys">
+    Test keys are prefixed with `kth_test_sk_` and are used for **development and testing**. Requests made with a test key interact with a sandbox environment — no real charges occur and no real tickets are issued.
+
+    <Tip>
+      Always use test keys during development and QA. Switch to your live key only when you're ready to accept real payments in production.
+    </Tip>
+  </Tab>
+</Tabs>
+
+## Authentication Errors
+
+If your request is rejected due to an authentication issue, the API returns one of the following errors:
+
+| Status Code | Error | Meaning |
+|---|---|---|
+| `401 Unauthorized` | `invalid_api_key` | Your API key is missing, malformed, or has been revoked. |
+| `403 Forbidden` | `insufficient_permissions` | Your API key is valid but does not have permission to perform the requested action. |
+
+A `401` error response looks like this:
+
+```json
+{
+  "error": {
+    "code": "invalid_api_key",
+    "status": 401,
+    "message": "No valid API key provided. Include your key in the Authorization header as 'Bearer YOUR_API_KEY'."
+  }
+}
+```
+
+If you receive a `403` error, check that your API key has the correct permission scopes enabled. You can review and update key permissions from **Settings → API Keys** in the dashboard.
+
+<Note>
+  If you suspect your API key has been compromised, rotate it immediately. Go to **Settings → API Keys**, find the affected key, and click **Revoke**. Then generate a new key and update it in all your integrations.
+</Note>

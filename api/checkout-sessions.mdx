@@ -1,0 +1,240 @@
+---
+title: "Checkout Sessions API: Create, Retrieve, and Pay for Tickets"
+sidebarTitle: "Checkout Sessions"
+description: "Create Stripe-powered checkout sessions for ticket purchases, redirect buyers to a hosted payment page, and retrieve session status."
+---
+
+Checkout Sessions are the primary way to initiate a ticket purchase on Kellogg Ticket Hub. Create a session with your desired event and ticket type, redirect your user to the session URL, and Stripe handles secure payment collection on your behalf. Once payment is complete, tickets are confirmed and emailed to the customer automatically.
+
+---
+
+## Create a checkout session
+
+**`POST /v1/checkout/sessions`**
+
+Creates a new Checkout Session and returns a Stripe-hosted payment URL. Redirect your user to the `url` field in the response to have them complete their purchase.
+
+### Request body
+
+<ParamField body="event_id" type="string" required>
+  The unique identifier of the event for which you are purchasing tickets, e.g.
+  `evt_abc123`. You can retrieve valid event IDs from the
+  [Events API](/api/events).
+</ParamField>
+
+<ParamField body="ticket_type_id" type="string" required>
+  The unique identifier of the ticket type to purchase, e.g. `tt_std`. Ticket
+  type IDs are listed under `ticket_types` on the event object.
+</ParamField>
+
+<ParamField body="quantity" type="integer" required>
+  Number of tickets to purchase in this session. Must be between `1` and `4`,
+  subject to any lower per-order limits set by the event organizer.
+</ParamField>
+
+<ParamField body="success_url" type="string" required>
+  The URL your user is redirected to after a successful payment. Include the
+  literal placeholder `{CHECKOUT_SESSION_ID}` in the URL to have the platform
+  substitute the session ID automatically, e.g.
+  `https://yourapp.com/success?session_id={CHECKOUT_SESSION_ID}`.
+</ParamField>
+
+<ParamField body="cancel_url" type="string" required>
+  The URL your user is redirected to if they click the back button or close the
+  checkout page without completing payment.
+</ParamField>
+
+<ParamField body="customer_email" type="string">
+  Pre-fills the email field on the Stripe-hosted checkout form. Providing this
+  value speeds up the checkout flow for known users.
+</ParamField>
+
+<ParamField body="customer_id" type="string">
+  Associates this session with an existing Kellogg Ticket Hub customer record,
+  prefixed with `cus_`. When provided, the resulting ticket is automatically
+  linked to that customer's account.
+</ParamField>
+
+<ParamField body="metadata" type="object">
+  A set of key-value pairs you can attach to the session for your own
+  record-keeping, such as an internal order reference or campaign source. Keys
+  and values must be strings. Maximum of 20 keys; each key up to 40 characters,
+  each value up to 500 characters.
+</ParamField>
+
+### Example request
+
+<CodeGroup>
+
+```bash cURL
+curl -X POST https://api.kelloggtickethub.com/v1/checkout/sessions \
+  -H 'Authorization: Bearer YOUR_API_KEY' \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "event_id": "evt_abc123",
+    "ticket_type_id": "tt_std",
+    "quantity": 2,
+    "success_url": "https://yourapp.com/success?session_id={CHECKOUT_SESSION_ID}",
+    "cancel_url": "https://yourapp.com/events/evt_abc123",
+    "customer_email": "buyer@kellogg.edu"
+  }'
+```
+
+</CodeGroup>
+
+### Example response
+
+```json
+{
+  "id": "cs_abc123",
+  "object": "checkout.session",
+  "url": "https://checkout.stripe.com/pay/cs_abc123#...",
+  "status": "open",
+  "payment_status": "unpaid",
+  "event_id": "evt_abc123",
+  "ticket_type_id": "tt_std",
+  "quantity": 2,
+  "amount_total": 5000,
+  "currency": "usd",
+  "expires_at": 1700086400,
+  "customer_email": "buyer@kellogg.edu",
+  "created": 1700000000
+}
+```
+
+### Response fields
+
+<ResponseField name="id" type="string">
+  Unique identifier for the Checkout Session, prefixed with `cs_`. Store this
+  value to retrieve the session later and confirm payment status.
+</ResponseField>
+
+<ResponseField name="url" type="string">
+  The Stripe-hosted payment page URL. Redirect your user to this URL immediately
+  after creating the session. Sessions expire 24 hours after creation.
+</ResponseField>
+
+<ResponseField name="status" type="string">
+  Current status of the Checkout Session. One of:
+
+  <Expandable title="Status values">
+    <ResponseField name="open" type="string">
+      The session is active and the user has not yet completed or abandoned
+      payment.
+    </ResponseField>
+
+    <ResponseField name="complete" type="string">
+      Payment was collected successfully. Tickets have been confirmed and emailed
+      to the customer.
+    </ResponseField>
+
+    <ResponseField name="expired" type="string">
+      The session was not completed within 24 hours and is no longer valid. You
+      must create a new session to retry.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="payment_status" type="string">
+  Payment collection status. One of `unpaid`, `paid`, or `no_payment_required`.
+  A `paid` value confirms that funds were successfully captured by Stripe.
+</ResponseField>
+
+<ResponseField name="event_id" type="string">
+  The event ID associated with this session, as provided in the request.
+</ResponseField>
+
+<ResponseField name="ticket_type_id" type="string">
+  The ticket type ID associated with this session, as provided in the request.
+</ResponseField>
+
+<ResponseField name="quantity" type="integer">
+  Number of tickets included in this session.
+</ResponseField>
+
+<ResponseField name="amount_total" type="integer">
+  Total amount charged across all tickets, in the smallest currency unit
+  (cents). For example, `5000` represents $50.00 for two $25.00 tickets.
+</ResponseField>
+
+<ResponseField name="currency" type="string">
+  Three-letter ISO 4217 currency code, e.g. `"usd"`.
+</ResponseField>
+
+<ResponseField name="expires_at" type="integer">
+  Unix timestamp indicating when this session expires. Sessions are valid for
+  24 hours from the `created` time.
+</ResponseField>
+
+<ResponseField name="customer_email" type="string">
+  The email address associated with this session. This is the address to which
+  ticket confirmation emails are sent upon successful payment.
+</ResponseField>
+
+<ResponseField name="created" type="integer">
+  Unix timestamp of when the session was created.
+</ResponseField>
+
+---
+
+## Retrieve a checkout session
+
+**`GET /v1/checkout/sessions/{id}`**
+
+Retrieves a Checkout Session by ID. Use this endpoint to confirm whether payment was completed and tickets were issued — for example, on your `success_url` page after the user returns from Stripe.
+
+### Path parameters
+
+<ParamField path="id" type="string" required>
+  The unique identifier of the Checkout Session to retrieve, prefixed with
+  `cs_`.
+</ParamField>
+
+### Example request
+
+<CodeGroup>
+
+```bash cURL
+curl https://api.kelloggtickethub.com/v1/checkout/sessions/cs_abc123 \
+  -H 'Authorization: Bearer YOUR_API_KEY'
+```
+
+</CodeGroup>
+
+### Example response
+
+```json
+{
+  "id": "cs_abc123",
+  "object": "checkout.session",
+  "url": "https://checkout.stripe.com/pay/cs_abc123#...",
+  "status": "complete",
+  "payment_status": "paid",
+  "event_id": "evt_abc123",
+  "ticket_type_id": "tt_std",
+  "quantity": 2,
+  "amount_total": 5000,
+  "currency": "usd",
+  "expires_at": 1700086400,
+  "customer_email": "buyer@kellogg.edu",
+  "created": 1700000000
+}
+```
+
+The response is the full session object as described in the [Create a checkout session](#create-a-checkout-session) section above. A `status` of `complete` and a `payment_status` of `paid` together confirm that the purchase succeeded and tickets have been delivered.
+
+<Note>
+  Once `status` is `complete`, the tickets have been confirmed and a
+  confirmation email containing QR codes has been sent to the customer. You can
+  retrieve the issued ticket objects via the
+  [Tickets API](/api/tickets).
+</Note>
+
+<Tip>
+  Always verify payment status by calling this endpoint server-side — do not
+  rely solely on the `success_url` redirect. Redirects can be interrupted by
+  browser issues or network problems, so a user may land on your success page
+  before payment is fully confirmed. For the most reliable fulfillment, listen
+  for the `checkout.session.completed` webhook event in addition to polling
+  this endpoint.
+</Tip>

@@ -1,0 +1,92 @@
+---
+title: "Kellogg Ticket Hub Quickstart: Buy Your First Event Ticket"
+sidebarTitle: "Quick Start"
+description: "Set up your Kellogg Ticket Hub account, browse upcoming events, and complete your first ticket purchase — through the dashboard or the REST API."
+---
+
+Kellogg Ticket Hub is designed to get you from zero to confirmed ticket in minutes. This guide walks you through every step — from creating your account to receiving your QR code — whether you're using the web dashboard or the API.
+
+## Purchase Your First Ticket
+
+<Steps>
+  <Step title="Create Your Account">
+    Navigate to [kelloggtickethub.com](https://kelloggtickethub.com) and click **Sign Up**. Enter your name, email address, and a secure password.
+
+    To access Kellogg-exclusive events, verify your Kellogg email address (`@kellogg.northwestern.edu` or `@northwestern.edu`). Check your inbox for a verification link and click it to confirm your address before proceeding.
+  </Step>
+
+  <Step title="Browse Events">
+    After logging in, open the **Events** dashboard to see all upcoming Kellogg events. Use the search bar and filters to narrow results by date, category (lecture, networking, conference, gala), or organizer.
+
+    If you're using the API, call `GET /v1/events` to retrieve a paginated list of upcoming events:
+
+    ```bash
+    curl https://api.kelloggtickethub.com/v1/events \
+      -H 'Authorization: Bearer YOUR_API_KEY'
+    ```
+  </Step>
+
+  <Step title="Select Tickets">
+    Click on any event to open its detail page. Review the event description, date, venue, and available ticket types (for example, General Admission or VIP). Select your desired ticket type from the dropdown and enter the quantity you need, then click **Add to Cart**.
+  </Step>
+
+  <Step title="Complete Checkout">
+    Review your cart and click **Proceed to Checkout**. Enter your payment details — Kellogg Ticket Hub processes all payments securely through Stripe.
+
+    If you're integrating programmatically, create a Checkout Session via the API and redirect your user to the returned `url`:
+
+    <CodeGroup>
+      ```bash cURL
+      curl https://api.kelloggtickethub.com/v1/checkout/sessions \
+        -H 'Authorization: Bearer YOUR_API_KEY' \
+        -H 'Content-Type: application/json' \
+        -d '{
+          "event_id": "evt_abc123",
+          "ticket_type_id": "tkt_standard",
+          "quantity": 2,
+          "success_url": "https://yoursite.com/success",
+          "cancel_url": "https://yoursite.com/cancel"
+        }'
+      ```
+    </CodeGroup>
+
+    A successful request returns a Checkout Session object:
+
+    ```json
+    {
+      "id": "cs_live_a1B2c3D4e5F6g7H8i9J0",
+      "url": "https://checkout.kelloggtickethub.com/pay/cs_live_a1B2c3D4e5F6g7H8i9J0",
+      "status": "open",
+      "amount_total": 5000,
+      "expires_at": 1735689600
+    }
+    ```
+
+    Redirect the buyer to `url` to complete payment. The `amount_total` is expressed in the smallest currency unit (cents), so `5000` equals $50.00 USD.
+  </Step>
+
+  <Step title="Receive Confirmation">
+    Once payment is complete, Kellogg Ticket Hub sends a confirmation email to your registered address. The email includes:
+
+    - Your order summary and ticket details
+    - A **QR code** for each ticket, used for entry at the event
+    - A link to view and manage your order in the dashboard
+
+    Check your spam folder if the email doesn't arrive within a few minutes.
+  </Step>
+</Steps>
+
+<Note>
+  Programmatic access to the Kellogg Ticket Hub API requires an API key. Learn how to generate and use your key in the [Authentication](/authentication) guide.
+</Note>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Purchasing Tickets" icon="ticket" href="/guides/purchasing-tickets">
+    Dive deeper into ticket types, group purchases, discount codes, and order management.
+  </Card>
+  <Card title="Checkout Sessions API" icon="credit-card" href="/api/checkout-sessions">
+    Explore the full Checkout Sessions endpoint — parameters, responses, webhooks, and error handling.
+  </Card>
+</CardGroup>

@@ -1,0 +1,137 @@
+---
+title: 'API Error Codes, HTTP Status Codes, and Error Handling'
+sidebarTitle: 'Errors'
+description: 'Understand Kellogg Ticket Hub API error responses, HTTP status codes, and common error codes to diagnose and handle failures in your integration.'
+---
+
+The Kellogg Ticket Hub API uses standard HTTP status codes to indicate success or failure. When a request fails, the response body always contains a structured JSON `error` object that gives you the information you need to diagnose and fix the problem programmatically.
+
+## Error Response Format
+
+Every error response follows this consistent structure:
+
+```json Error response body
+{
+  "error": {
+    "code": "card_declined",
+    "message": "Your card was declined. Please try a different payment method.",
+    "param": "payment_method"
+  }
+}
+```
+
+<ResponseField name="error" type="object" required>
+  The top-level error container present on every failed response.
+
+  <Expandable title="error fields">
+    <ResponseField name="code" type="string" required>
+      A machine-readable string that uniquely identifies the error type (e.g., `card_declined`, `validation_error`). Use this field in your error-handling logic rather than parsing the human-readable `message`.
+    </ResponseField>
+
+    <ResponseField name="message" type="string" required>
+      A human-readable description of what went wrong. You can display this directly to end users where appropriate.
+    </ResponseField>
+
+    <ResponseField name="param" type="string">
+      The name of the request parameter that caused the error, when applicable. This field is omitted if the error is not tied to a specific parameter.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+## HTTP Status Codes
+
+| Status | Meaning |
+|--------|---------|
+| `200` | **OK** — The request succeeded. |
+| `201` | **Created** — A new resource was created successfully. |
+| `204` | **No Content** — The resource was deleted; no body is returned. |
+| `400` | **Bad Request** — The request is malformed or contains invalid parameters. |
+| `401` | **Unauthorized** — The `Authorization` header is missing or the API key is invalid. |
+| `403` | **Forbidden** — The API key is valid but lacks permission for this resource. |
+| `404` | **Not Found** — The requested resource does not exist. |
+| `409` | **Conflict** — The resource already exists or the current state prevents the operation. |
+| `422` | **Unprocessable Entity** — The request is well-formed but failed validation. |
+| `429` | **Too Many Requests** — You have exceeded the rate limit. |
+| `500` | **Internal Server Error** — An unexpected error occurred on our end. Try again later. |
+
+<Note>
+  `4xx` errors indicate a problem with your request. `5xx` errors indicate a problem on the Kellogg Ticket Hub side. Only retry on `429` and `5xx` responses — retrying a `4xx` without changing the request will produce the same error.
+</Note>
+
+## Common Error Codes
+
+<AccordionGroup>
+  <Accordion title="authentication_required">
+    **HTTP 401** — Your request did not include an `Authorization` header. Add your API key as a Bearer token:
+
+    ```
+    Authorization: Bearer kth_live_sk_xxxxxxxxxxxxxxxx
+    ```
+
+    See the [Authentication](/api/authentication) guide for full details.
+  </Accordion>
+
+  <Accordion title="invalid_api_key">
+    **HTTP 401** — The API key you supplied is incorrect, expired, or has been revoked. Verify the key in **Settings → API Keys** and confirm you are using the right key for your environment (live vs. test).
+  </Accordion>
+
+  <Accordion title="resource_not_found">
+    **HTTP 404** — The resource ID in your request does not match any record in your account. Check that the `id` is spelled correctly and was created under the same API key environment (live keys cannot access test-mode resources and vice versa).
+  </Accordion>
+
+  <Accordion title="validation_error">
+    **HTTP 422** — One or more request parameters failed validation. Inspect the `param` field in the error body to identify which parameter caused the failure, then check the endpoint reference for its accepted format and constraints.
+  </Accordion>
+
+  <Accordion title="card_declined">
+    **HTTP 402** — The customer's payment method was declined by the card network or issuing bank. The `message` field may contain a more specific reason. Ask the customer to use a different payment method or contact their bank.
+  </Accordion>
+
+  <Accordion title="event_sold_out">
+    **HTTP 409** — There are no tickets remaining for the selected ticket type. Fetch the event object again to get the latest availability before surfacing options to customers.
+  </Accordion>
+
+  <Accordion title="event_not_available">
+    **HTTP 409** — The event is closed, cancelled, or otherwise unavailable for new orders. Check the event's `status` field to determine the current state and update your UI accordingly.
+  </Accordion>
+
+  <Accordion title="rate_limit_exceeded">
+    **HTTP 429** — You have sent more than 100 requests per minute for this API key. Stop sending requests and wait for the number of seconds specified in the `Retry-After` response header before resuming:
+
+    ```
+    HTTP/1.1 429 Too Many Requests
+    Retry-After: 8
+    ```
+  </Accordion>
+
+  <Accordion title="transfer_not_allowed">
+    **HTTP 403** — Ticket transfers are disabled for this event by the event organizer. You cannot transfer or reassign tickets for this event, regardless of the customer's request.
+  </Accordion>
+</AccordionGroup>
+
+## Retrying Requests
+
+Follow these guidelines to build a resilient integration:
+
+- **Retry on `429` and `5xx`** using exponential backoff — for example, wait 1 s, then 2 s, then 4 s between attempts.
+- **Do not retry on `4xx`** errors (excluding `429`). These indicate a problem with the request itself; resending the same request without fixing it will produce the same error.
+- **Honor the `Retry-After` header** when you receive a `429`. This header tells you exactly how many seconds to wait before your next request.
+
+<Tip>
+  Include an `Idempotency-Key` header on `POST` requests so you can safely retry without creating duplicate orders or charges. Use a unique UUID per logical operation and reuse the same key on each retry attempt:
+
+  ```bash
+  curl https://api.kelloggtickethub.com/v1/orders \
+    -X POST \
+    -H 'Authorization: Bearer kth_live_sk_xxxxxxxxxxxxxxxx' \
+    -H 'Content-Type: application/json' \
+    -H 'Idempotency-Key: 550e8400-e29b-41d4-a716-446655440000' \
+    -d '{"event_id": "evt_01HXYZ9ABCDE", "quantity": 2}'
+  ```
+
+  The API stores the result of the first successful request for 24 hours and returns the same response for any duplicate calls that share the key.
+</Tip>
+
+<Warning>
+  If you receive a `500 Internal Server Error`, do not assume the operation failed. The request may have been processed before the error occurred. Check whether the resource was created before retrying to avoid duplicates — or use idempotency keys to make retries safe.
+</Warning>

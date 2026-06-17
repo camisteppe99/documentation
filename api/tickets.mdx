@@ -1,0 +1,257 @@
+---
+title: "Tickets API: Retrieve, List, and Transfer Event Tickets"
+sidebarTitle: "Tickets"
+description: "Retrieve individual ticket details, list all tickets for a customer, and transfer tickets to a new attendee before check-in opens."
+---
+
+The Tickets API lets you retrieve individual tickets, list all tickets for a customer, and manage ticket transfers. A ticket object is created automatically when a Checkout Session completes successfully and is emailed to the purchaser — you can then use these endpoints to inspect, enumerate, and reassign tickets as needed.
+
+---
+
+## Retrieve a ticket
+
+**`GET /v1/tickets/{id}`**
+
+Returns a single ticket object by its unique ID, including holder details, status, and a link to the ticket's QR code.
+
+### Path parameters
+
+<ParamField path="id" type="string" required>
+  The unique identifier of the ticket to retrieve, prefixed with `tkt_`.
+</ParamField>
+
+### Example request
+
+<CodeGroup>
+
+```bash cURL
+curl https://api.kelloggtickethub.com/v1/tickets/tkt_xyz789 \
+  -H 'Authorization: Bearer YOUR_API_KEY'
+```
+
+</CodeGroup>
+
+### Example response
+
+```json
+{
+  "id": "tkt_xyz789",
+  "object": "ticket",
+  "event_id": "evt_abc123",
+  "event_name": "Kellogg Leadership Summit 2025",
+  "ticket_type": "Standard",
+  "holder_name": "Jane Smith",
+  "holder_email": "jsmith@kellogg.edu",
+  "status": "confirmed",
+  "qr_code_url": "https://api.kelloggtickethub.com/v1/tickets/tkt_xyz789/qr",
+  "purchased_at": "2025-01-10T14:23:00Z",
+  "amount_paid": 2500,
+  "currency": "usd"
+}
+```
+
+### Response fields
+
+<ResponseField name="id" type="string">
+  Unique identifier for the ticket, prefixed with `tkt_`.
+</ResponseField>
+
+<ResponseField name="event_id" type="string">
+  The ID of the event this ticket grants entry to.
+</ResponseField>
+
+<ResponseField name="event_name" type="string">
+  Display name of the associated event, provided for convenience.
+</ResponseField>
+
+<ResponseField name="ticket_type" type="string">
+  The name of the ticket tier purchased, e.g. `"Standard"` or `"Alumni"`.
+</ResponseField>
+
+<ResponseField name="holder_name" type="string">
+  Full name of the current ticket holder.
+</ResponseField>
+
+<ResponseField name="holder_email" type="string">
+  Email address of the current ticket holder. Updated automatically after a
+  successful transfer.
+</ResponseField>
+
+<ResponseField name="status" type="string">
+  Current lifecycle status of the ticket. One of:
+
+  <Expandable title="Status values">
+    <ResponseField name="confirmed" type="string">
+      The ticket is valid and has not yet been used.
+    </ResponseField>
+
+    <ResponseField name="checked_in" type="string">
+      The QR code was scanned at the venue and the attendee has been admitted.
+    </ResponseField>
+
+    <ResponseField name="cancelled" type="string">
+      The ticket was cancelled, either by the attendee or by an administrator.
+    </ResponseField>
+
+    <ResponseField name="refunded" type="string">
+      A refund was issued for this ticket. The ticket is no longer valid for
+      entry.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="qr_code_url" type="string">
+  URL returning a PNG image of the ticket's unique QR code. Present this at
+  the venue for check-in scanning.
+</ResponseField>
+
+<ResponseField name="purchased_at" type="string">
+  ISO 8601 timestamp indicating when the ticket was originally purchased.
+</ResponseField>
+
+<ResponseField name="amount_paid" type="integer">
+  The amount paid for this ticket, in the smallest currency unit (cents for
+  USD). `2500` equals $25.00.
+</ResponseField>
+
+<ResponseField name="currency" type="string">
+  Three-letter ISO 4217 currency code, e.g. `"usd"`.
+</ResponseField>
+
+<Note>
+  Ticket prices are expressed in cents. Divide `amount_paid` by 100 to get the
+  dollar value — `2500` equals $25.00.
+</Note>
+
+---
+
+## List tickets for a customer
+
+**`GET /v1/customers/{customer_id}/tickets`**
+
+Returns a paginated list of all ticket objects associated with a specific customer account, sorted by purchase date descending.
+
+### Path parameters
+
+<ParamField path="customer_id" type="string" required>
+  The unique identifier of the customer, prefixed with `cus_`.
+</ParamField>
+
+### Query parameters
+
+<ParamField query="limit" type="integer">
+  Number of ticket objects to return per page. Defaults to `10`. Maximum is
+  `100`.
+</ParamField>
+
+<ParamField query="starting_after" type="string">
+  A cursor for pagination. Pass the `id` of the last ticket from the previous
+  page to retrieve the next page of results.
+</ParamField>
+
+### Example request
+
+<CodeGroup>
+
+```bash cURL
+curl 'https://api.kelloggtickethub.com/v1/customers/cus_abc123/tickets?limit=10' \
+  -H 'Authorization: Bearer YOUR_API_KEY'
+```
+
+</CodeGroup>
+
+### Example response
+
+```json
+{
+  "object": "list",
+  "data": [
+    {
+      "id": "tkt_xyz789",
+      "object": "ticket",
+      "event_id": "evt_abc123",
+      "event_name": "Kellogg Leadership Summit 2025",
+      "ticket_type": "Standard",
+      "holder_name": "Jane Smith",
+      "holder_email": "jsmith@kellogg.edu",
+      "status": "confirmed",
+      "qr_code_url": "https://api.kelloggtickethub.com/v1/tickets/tkt_xyz789/qr",
+      "purchased_at": "2025-01-10T14:23:00Z",
+      "amount_paid": 2500,
+      "currency": "usd"
+    }
+  ],
+  "has_more": false
+}
+```
+
+Each item in `data` is a full ticket object as described in the [Retrieve a ticket](#retrieve-a-ticket) section above.
+
+---
+
+## Transfer a ticket
+
+**`POST /v1/tickets/{id}/transfer`**
+
+Transfers ownership of a ticket to another attendee. On success, the ticket's `holder_name` and `holder_email` are updated to the recipient's details and the status remains `confirmed`. A confirmation email is sent to both the original holder and the recipient.
+
+### Path parameters
+
+<ParamField path="id" type="string" required>
+  The unique identifier of the ticket to transfer, prefixed with `tkt_`.
+</ParamField>
+
+### Request body
+
+<ParamField body="recipient_email" type="string" required>
+  The email address of the new ticket holder. The recipient must have an
+  existing Kellogg Ticket Hub account registered under this email address.
+</ParamField>
+
+### Example request
+
+<CodeGroup>
+
+```bash cURL
+curl -X POST https://api.kelloggtickethub.com/v1/tickets/tkt_xyz789/transfer \
+  -H 'Authorization: Bearer YOUR_API_KEY' \
+  -H 'Content-Type: application/json' \
+  -d '{"recipient_email": "colleague@kellogg.edu"}'
+```
+
+</CodeGroup>
+
+### Example response
+
+```json
+{
+  "id": "tkt_xyz789",
+  "object": "ticket",
+  "event_id": "evt_abc123",
+  "event_name": "Kellogg Leadership Summit 2025",
+  "ticket_type": "Standard",
+  "holder_name": "Alex Johnson",
+  "holder_email": "colleague@kellogg.edu",
+  "status": "confirmed",
+  "qr_code_url": "https://api.kelloggtickethub.com/v1/tickets/tkt_xyz789/qr",
+  "purchased_at": "2025-01-10T14:23:00Z",
+  "amount_paid": 2500,
+  "currency": "usd"
+}
+```
+
+The response is the updated ticket object with the new holder's details reflected in `holder_name` and `holder_email`.
+
+<Note>
+  Transfers are only permitted before the event's check-in window opens. Once
+  check-in begins, the transfer endpoint returns a `403` error. Some events
+  also disable transfers entirely — if so, the endpoint returns a `403` with
+  `code: "transfers_disabled"`.
+</Note>
+
+<Tip>
+  If the recipient does not yet have a Kellogg Ticket Hub account, direct them
+  to register at `kelloggtickethub.com/register` before you attempt the
+  transfer. The request will fail with a `404` if the email is not associated
+  with an existing account.
+</Tip>

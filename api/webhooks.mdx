@@ -1,0 +1,191 @@
+---
+title: "Webhook Endpoints API: Register, List, and Delete Endpoints"
+sidebarTitle: "Webhooks"
+description: "Register, list, retrieve, and delete webhook endpoints to receive real-time event notifications from Kellogg Ticket Hub via secure HTTPS callbacks."
+---
+
+The Webhooks API lets you programmatically register and manage webhook endpoints that receive real-time event notifications from Kellogg Ticket Hub. When a notable action occurs — such as a completed checkout or an issued refund — the platform sends an HTTP POST request to each of your registered endpoints with a signed event payload.
+
+---
+
+## Create a Webhook Endpoint
+
+**POST** `/v1/webhook_endpoints`
+
+Registers a new HTTPS URL to receive webhook event notifications. Upon creation, you receive a signing secret that you use to verify that incoming requests genuinely originate from Kellogg Ticket Hub.
+
+### Request Body
+
+<ParamField body="url" type="string" required>
+  The fully-qualified HTTPS URL of your endpoint (e.g., `https://yourapp.com/webhooks/tickethub`). Plain HTTP URLs are not accepted.
+</ParamField>
+
+<ParamField body="enabled_events" type="array" required>
+  An array of event type strings that this endpoint should receive. Pass `["*"]` to subscribe to all event types.
+
+  <Expandable title="Available event types">
+    | Event | Description |
+    |---|---|
+    | `checkout.session.completed` | A Checkout Session was completed successfully |
+    | `ticket.confirmed` | A ticket was issued and confirmed for an attendee |
+    | `ticket.checked_in` | A ticket was scanned at the event entrance |
+    | `refund.created` | A refund was initiated for an order |
+    | `refund.succeeded` | A refund was processed successfully |
+    | `refund.failed` | A refund attempt failed |
+    | `order.cancelled` | An order was cancelled |
+    | `payment_intent.succeeded` | A payment intent completed successfully |
+    | `payment_intent.payment_failed` | A payment intent failed to complete |
+  </Expandable>
+</ParamField>
+
+<ParamField body="description" type="string">
+  A human-readable label for this webhook endpoint. Useful for distinguishing between endpoints in production and staging environments.
+</ParamField>
+
+<CodeGroup>
+```bash cURL
+curl -X POST https://api.kelloggtickethub.com/v1/webhook_endpoints \
+  -H 'Authorization: Bearer YOUR_API_KEY' \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "url": "https://yourapp.com/webhooks/tickethub",
+    "enabled_events": [
+      "checkout.session.completed",
+      "ticket.confirmed",
+      "refund.succeeded"
+    ],
+    "description": "Production ticket fulfillment handler"
+  }'
+```
+
+```bash cURL — Subscribe to All Events
+curl -X POST https://api.kelloggtickethub.com/v1/webhook_endpoints \
+  -H 'Authorization: Bearer YOUR_API_KEY' \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "url": "https://yourapp.com/webhooks/tickethub",
+    "enabled_events": ["*"],
+    "description": "Development catch-all endpoint"
+  }'
+```
+</CodeGroup>
+
+**Example Response**
+
+```json
+{
+  "id": "we_abc123",
+  "object": "webhook_endpoint",
+  "url": "https://yourapp.com/webhooks/tickethub",
+  "status": "active",
+  "enabled_events": [
+    "checkout.session.completed",
+    "ticket.confirmed",
+    "refund.succeeded"
+  ],
+  "description": "Production ticket fulfillment handler",
+  "secret": "whsec_xxxxxxxxxxxxxxxxxxxxxxxx",
+  "created": 1700000000
+}
+```
+
+<Warning>
+  The `secret` field is only returned once — at the moment the endpoint is created. Store it securely in your environment configuration immediately. You need this secret to verify the signature on every incoming webhook request.
+</Warning>
+
+---
+
+## List Webhook Endpoints
+
+**GET** `/v1/webhook_endpoints`
+
+Returns a list of all webhook endpoints registered on your account, including their status and subscribed event types.
+
+<CodeGroup>
+```bash cURL
+curl https://api.kelloggtickethub.com/v1/webhook_endpoints \
+  -H 'Authorization: Bearer YOUR_API_KEY'
+```
+</CodeGroup>
+
+**Example Response**
+
+```json
+{
+  "object": "list",
+  "data": [
+    {
+      "id": "we_abc123",
+      "object": "webhook_endpoint",
+      "url": "https://yourapp.com/webhooks/tickethub",
+      "status": "active",
+      "enabled_events": [
+        "checkout.session.completed",
+        "ticket.confirmed",
+        "refund.succeeded"
+      ],
+      "description": "Production ticket fulfillment handler",
+      "created": 1700000000
+    }
+  ],
+  "has_more": false
+}
+```
+
+---
+
+## Retrieve a Webhook Endpoint
+
+**GET** `/v1/webhook_endpoints/{id}`
+
+Retrieves the configuration of a single webhook endpoint by its ID. The signing `secret` is not returned after initial creation.
+
+<CodeGroup>
+```bash cURL
+curl https://api.kelloggtickethub.com/v1/webhook_endpoints/we_abc123 \
+  -H 'Authorization: Bearer YOUR_API_KEY'
+```
+</CodeGroup>
+
+**Example Response**
+
+```json
+{
+  "id": "we_abc123",
+  "object": "webhook_endpoint",
+  "url": "https://yourapp.com/webhooks/tickethub",
+  "status": "active",
+  "enabled_events": [
+    "checkout.session.completed",
+    "ticket.confirmed",
+    "refund.succeeded"
+  ],
+  "description": "Production ticket fulfillment handler",
+  "created": 1700000000
+}
+```
+
+---
+
+## Delete a Webhook Endpoint
+
+**DELETE** `/v1/webhook_endpoints/{id}`
+
+Permanently deletes a webhook endpoint. The endpoint stops receiving events immediately upon deletion.
+
+<CodeGroup>
+```bash cURL
+curl -X DELETE https://api.kelloggtickethub.com/v1/webhook_endpoints/we_abc123 \
+  -H 'Authorization: Bearer YOUR_API_KEY'
+```
+</CodeGroup>
+
+Returns **HTTP 204 No Content** on success. No response body is returned.
+
+<Note>
+  Deleted endpoints stop receiving events immediately. Any in-flight deliveries already queued at the time of deletion may still be attempted once, but no new events will be dispatched to the deleted URL.
+</Note>
+
+<Tip>
+  For the complete list of available event types and guidance on verifying webhook signatures, see the [Webhooks integration guide](/integrations/webhooks).
+</Tip>

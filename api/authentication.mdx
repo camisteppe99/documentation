@@ -1,0 +1,84 @@
+---
+title: 'Kellogg Ticket Hub API Key Authentication and Authorization'
+sidebarTitle: 'Authentication'
+description: 'Authenticate every Kellogg Ticket Hub API request by passing your API key as a Bearer token in the Authorization header, and manage key lifecycle.'
+---
+
+Every request to the Kellogg Ticket Hub API must include your API key as a Bearer token in the `Authorization` header. Requests made without a valid key — or with a revoked one — return a `401 Unauthorized` response immediately, regardless of the endpoint.
+
+## Header Format
+
+Pass your API key using the standard HTTP `Authorization` header in the following format:
+
+```
+Authorization: Bearer kth_live_sk_xxxxxxxxxxxxxxxx
+```
+
+The value must be the literal string `Bearer` followed by a single space and your full API key. The header is case-insensitive (`authorization` works equally well), but the `Bearer` prefix is required.
+
+## Example Requests
+
+<CodeGroup>
+
+```bash cURL
+curl https://api.kelloggtickethub.com/v1/events \
+  -H 'Authorization: Bearer kth_live_sk_xxxxxxxxxxxxxxxx'
+```
+
+```javascript JavaScript
+const res = await fetch('https://api.kelloggtickethub.com/v1/events', {
+  headers: {
+    'Authorization': 'Bearer kth_live_sk_xxxxxxxxxxxxxxxx'
+  }
+});
+
+const data = await res.json();
+console.log(data);
+```
+
+</CodeGroup>
+
+## API Key Types
+
+Kellogg Ticket Hub issues two types of API keys depending on the environment you are working in:
+
+<ResponseField name="kth_live_sk_..." type="string">
+  **Live mode key.** Requests made with a live key process real charges and affect real customer data. Use this key only in your production environment.
+</ResponseField>
+
+<ResponseField name="kth_test_sk_..." type="string">
+  **Test mode key.** Requests made with a test key simulate transactions without processing real payments. Use this key freely during development and QA.
+</ResponseField>
+
+<Note>
+  Responses from the live and test environments are structurally identical, so you can develop against the test environment with confidence that switching to live requires only a key swap.
+</Note>
+
+## Managing Your API Keys
+
+You generate and revoke API keys from the Kellogg Ticket Hub dashboard:
+
+- **Generate a new key**: Navigate to **Settings → API Keys → Generate**. Give the key a descriptive label (e.g., `production-backend`) so you can identify it later.
+- **Revoke a key**: Navigate to **Settings → API Keys**, locate the key, and click **Revoke**. Revocation is immediate and cannot be undone — any requests using the revoked key will start returning `401`.
+
+<Warning>
+  Never commit API keys directly in source code or check them into version control. Store them as environment variables (e.g., `KTH_API_KEY`) and load them at runtime. If a key is accidentally exposed, revoke it immediately and generate a replacement.
+</Warning>
+
+<Tip>
+  If multiple services or team members need API access, generate a separate key for each. This lets you revoke one key without disrupting other integrations.
+</Tip>
+
+## Authentication Errors
+
+| HTTP Status | Meaning |
+|-------------|---------|
+| `401 Unauthorized` | The `Authorization` header is missing, malformed, or the key has been revoked. |
+| `403 Forbidden` | The key is valid but does not have permission to access the requested resource. |
+
+When you receive a `401`, verify that:
+1. The `Authorization` header is present and correctly formatted.
+2. You are using the correct key for the environment (live vs. test).
+3. The key has not been revoked in the dashboard.
+
+When you receive a `403`, check whether the API key belongs to a role or user account that has the required permissions for the endpoint you are calling.

@@ -1,0 +1,92 @@
+---
+title: "Kellogg Ticket Hub: Customer Accounts and Payment Methods"
+sidebarTitle: "Customers"
+description: "Learn what a customer account is, what information it stores, and how Kellogg Ticket Hub keeps your payment data secure through Stripe."
+---
+
+A customer is anyone who purchases or holds tickets on Kellogg Ticket Hub. Your customer account ties together your identity, saved payment methods, and complete order history in one place. Whether you buy a single ticket to a panel discussion or register a group for the annual gala, every transaction flows through your account and is retrievable at any time.
+
+## Creating an Account
+
+You can create a customer account in three ways:
+
+<CardGroup cols={3}>
+  <Card title="Email Sign-Up" icon="envelope">
+    Register with your email address and a password directly on the Kellogg Ticket Hub website.
+  </Card>
+  <Card title="Kellogg SSO" icon="building-columns">
+    Sign in with your Kellogg School NetID. Your affiliation (student, faculty, staff) is verified automatically.
+  </Card>
+  <Card title="API" icon="code">
+    Create a customer programmatically using the `POST /customers` endpoint — useful for bulk registration workflows.
+  </Card>
+</CardGroup>
+
+## Customer Fields
+
+| Field | Type | Description |
+|---|---|---|
+| `id` | string | Unique customer identifier, e.g. `cus_123abc` |
+| `email` | string | Primary contact email address |
+| `name` | string | Customer's full name |
+| `affiliation` | string | One of `student`, `alumni`, `faculty`, `staff`, `guest` |
+| `payment_methods` | array | Saved cards and digital wallets linked to this account |
+| `created_at` | string | Account creation timestamp in ISO 8601 format |
+
+### Sample Customer Object
+
+```json
+{
+  "id": "cus_123abc",
+  "email": "alex.chen@kellogg.northwestern.edu",
+  "name": "Alex Chen",
+  "affiliation": "student",
+  "payment_methods": [
+    {
+      "id": "pm_card_visa",
+      "type": "card",
+      "brand": "visa",
+      "last4": "4242",
+      "exp_month": 11,
+      "exp_year": 2027
+    }
+  ],
+  "created_at": "2024-11-30T09:05:44Z"
+}
+```
+
+## Saved Payment Methods
+
+You can save credit cards, debit cards, and digital wallets to your account so that future checkouts require only a single confirmation step. Stripe securely stores all payment instrument data on its PCI-compliant infrastructure — Kellogg Ticket Hub never receives or retains your raw card details.
+
+You can manage your saved payment methods from your account dashboard at any time, including adding new cards and removing old ones.
+
+## Order History
+
+Every ticket order you have ever placed — past, present, or pending — is accessible from your customer account. Order history includes:
+
+- The event name, date, and venue
+- Ticket type and quantity purchased
+- Payment amount and status
+- Links to download or re-send QR codes
+
+You can filter orders by status (`confirmed`, `cancelled`, `refunded`) to quickly find what you need.
+
+## Privacy and Payment Security
+
+<Note>
+  Kellogg Ticket Hub never stores raw card numbers, CVV codes, or full PANs on its own servers. When you enter payment details during checkout, that information travels directly to Stripe and is returned to Kellogg Ticket Hub only as a secure, non-reversible token. This architecture keeps your financial data safe even in the unlikely event of a server-side incident.
+</Note>
+
+Kellogg Ticket Hub complies with applicable data protection regulations. For details on how your personal information is collected and used, refer to the Kellogg School of Management Privacy Policy.
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Purchasing Tickets" icon="cart-shopping" href="/guides/purchasing-tickets">
+    Walk through the end-to-end ticket purchase flow, from browsing events to receiving your QR code.
+  </Card>
+  <Card title="Customers API" icon="code" href="/api/customers">
+    Explore the full Customers API reference to create, retrieve, and update customer accounts.
+  </Card>
+</CardGroup>

@@ -1,0 +1,228 @@
+---
+title: "Payment Methods API: Save, Attach, and Remove Payment Methods"
+sidebarTitle: "Payment Methods"
+description: "List, attach, and detach payment methods for a customer to enable faster checkouts and manage saved cards across Kellogg Ticket Hub."
+---
+
+Payment Methods represent saved cards, digital wallets, and other payment instruments stored in the platform. You can attach payment methods to a customer profile to enable faster future checkouts without requiring card details to be re-entered at every purchase.
+
+<Tip>
+  Payment method data — including full card numbers and CVVs — is never stored on Kellogg Ticket Hub servers. All sensitive card data is tokenized directly by Stripe before it reaches the platform. Use Stripe.js or the Stripe mobile SDKs to safely collect card details from your users.
+</Tip>
+
+---
+
+## Retrieve a Payment Method
+
+**`GET /v1/payment_methods/{id}`**
+
+Retrieves the details of a single payment method by its ID.
+
+### Path parameters
+
+<ParamField path="id" type="string" required>
+  The unique identifier of the payment method to retrieve, prefixed with `pm_`.
+</ParamField>
+
+### Example request
+
+<CodeGroup>
+
+```bash cURL
+curl https://api.kelloggtickethub.com/v1/payment_methods/pm_abc123 \
+  -H 'Authorization: Bearer YOUR_API_KEY'
+```
+
+</CodeGroup>
+
+### Example response
+
+```json
+{
+  "id": "pm_abc123",
+  "object": "payment_method",
+  "type": "card",
+  "card": {
+    "brand": "visa",
+    "last4": "4242",
+    "exp_month": 12,
+    "exp_year": 2027
+  },
+  "customer": "cus_abc123",
+  "created": 1700000000
+}
+```
+
+### Response fields
+
+<ResponseField name="id" type="string">
+  Unique identifier for the payment method, prefixed with `pm_`.
+</ResponseField>
+
+<ResponseField name="type" type="string">
+  The payment method type. Currently supported values are `card` and `link`.
+</ResponseField>
+
+<ResponseField name="card" type="object">
+  <Expandable title="card fields">
+    <ResponseField name="brand" type="string">
+      The card network brand, such as `visa`, `mastercard`, or `amex`.
+    </ResponseField>
+    <ResponseField name="last4" type="string">
+      The last four digits of the card number.
+    </ResponseField>
+    <ResponseField name="exp_month" type="integer">
+      The two-digit expiration month (1–12).
+    </ResponseField>
+    <ResponseField name="exp_year" type="integer">
+      The four-digit expiration year.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="customer" type="string">
+  The ID of the customer this payment method is attached to, or `null` if unattached.
+</ResponseField>
+
+<ResponseField name="created" type="integer">
+  Unix timestamp of when the payment method was created.
+</ResponseField>
+
+---
+
+## List Payment Methods for a Customer
+
+**`GET /v1/customers/{customer_id}/payment_methods`**
+
+Returns a list of payment methods attached to the specified customer. You can filter by type to narrow results.
+
+### Path parameters
+
+<ParamField path="customer_id" type="string" required>
+  The unique identifier of the customer whose payment methods you want to list, prefixed with `cus_`.
+</ParamField>
+
+### Query parameters
+
+<ParamField query="type" type="string">
+  Filter results by payment method type. Accepted values: `card`, `link`. If omitted, all types are returned.
+</ParamField>
+
+<ParamField query="limit" type="integer">
+  The number of payment methods to return. Defaults to `10`. Maximum is `100`.
+</ParamField>
+
+### Example request
+
+<CodeGroup>
+
+```bash cURL
+curl 'https://api.kelloggtickethub.com/v1/customers/cus_abc123/payment_methods?type=card' \
+  -H 'Authorization: Bearer YOUR_API_KEY'
+```
+
+</CodeGroup>
+
+### Example response
+
+```json
+{
+  "object": "list",
+  "data": [
+    {
+      "id": "pm_abc123",
+      "object": "payment_method",
+      "type": "card",
+      "card": {
+        "brand": "visa",
+        "last4": "4242",
+        "exp_month": 12,
+        "exp_year": 2027
+      },
+      "customer": "cus_abc123",
+      "created": 1700000000
+    }
+  ],
+  "has_more": false
+}
+```
+
+---
+
+## Attach a Payment Method
+
+**`POST /v1/payment_methods/{id}/attach`**
+
+Attaches an existing payment method to a customer. Once attached, the method is available for future purchases without re-entry.
+
+### Path parameters
+
+<ParamField path="id" type="string" required>
+  The unique identifier of the payment method to attach, prefixed with `pm_`.
+</ParamField>
+
+### Request body
+
+<ParamField body="customer_id" type="string" required>
+  The ID of the customer to attach this payment method to, prefixed with `cus_`.
+</ParamField>
+
+### Example request
+
+<CodeGroup>
+
+```bash cURL
+curl -X POST https://api.kelloggtickethub.com/v1/payment_methods/pm_abc123/attach \
+  -H 'Authorization: Bearer YOUR_API_KEY' \
+  -H 'Content-Type: application/json' \
+  -d '{"customer_id": "cus_abc123"}'
+```
+
+</CodeGroup>
+
+### Example response
+
+```json
+{
+  "id": "pm_abc123",
+  "object": "payment_method",
+  "type": "card",
+  "card": {
+    "brand": "visa",
+    "last4": "4242",
+    "exp_month": 12,
+    "exp_year": 2027
+  },
+  "customer": "cus_abc123",
+  "created": 1700000000
+}
+```
+
+The response is the updated payment method object with `customer` set to the ID of the newly attached customer.
+
+---
+
+## Delete a Payment Method
+
+**`DELETE /v1/payment_methods/{id}`**
+
+Removes a payment method from its attached customer. After detachment, the method can no longer be used for purchases without re-attaching it.
+
+### Path parameters
+
+<ParamField path="id" type="string" required>
+  The unique identifier of the payment method to delete, prefixed with `pm_`.
+</ParamField>
+
+### Example request
+
+<CodeGroup>
+
+```bash cURL
+curl -X DELETE https://api.kelloggtickethub.com/v1/payment_methods/pm_abc123 \
+  -H 'Authorization: Bearer YOUR_API_KEY'
+```
+
+</CodeGroup>
+
+Returns **HTTP 204 No Content** on success. No response body is returned.

@@ -1,0 +1,172 @@
+---
+title: "Orders API: Retrieve and List Ticket Purchase Orders"
+sidebarTitle: "Orders"
+description: "Retrieve individual ticket orders, list orders by customer, and check order and ticket status across Kellogg Ticket Hub events and purchases."
+---
+
+Orders represent completed ticket purchases. Each order contains one or more tickets tied to a specific event and customer. You can retrieve order details, check fulfillment status, and list all orders associated with a given customer using the endpoints below.
+
+---
+
+## Retrieve an Order
+
+**GET** `/v1/orders/{id}`
+
+Retrieves the full details of a single order, including all tickets issued under it.
+
+<CodeGroup>
+```bash cURL
+curl https://api.kelloggtickethub.com/v1/orders/ord_abc123 \
+  -H 'Authorization: Bearer YOUR_API_KEY'
+```
+</CodeGroup>
+
+**Example Response**
+
+```json
+{
+  "id": "ord_abc123",
+  "object": "order",
+  "status": "confirmed",
+  "customer_id": "cus_abc123",
+  "event_id": "evt_abc123",
+  "event_name": "Kellogg Leadership Summit 2025",
+  "quantity": 2,
+  "amount_total": 5000,
+  "currency": "usd",
+  "tickets": [
+    { "id": "tkt_001", "holder_name": "Jane Smith", "status": "confirmed" },
+    { "id": "tkt_002", "holder_name": "Alex Johnson", "status": "confirmed" }
+  ],
+  "created": 1700000000
+}
+```
+
+### Response Fields
+
+<ResponseField name="id" type="string">
+  Unique identifier for the order (e.g., `ord_abc123`).
+</ResponseField>
+
+<ResponseField name="status" type="string">
+  The current status of the order. See the status table below.
+</ResponseField>
+
+<ResponseField name="customer_id" type="string">
+  The ID of the customer who placed the order.
+</ResponseField>
+
+<ResponseField name="event_id" type="string">
+  The ID of the event this order is associated with.
+</ResponseField>
+
+<ResponseField name="event_name" type="string">
+  The display name of the event at the time the order was placed.
+</ResponseField>
+
+<ResponseField name="quantity" type="integer">
+  The total number of tickets in this order.
+</ResponseField>
+
+<ResponseField name="amount_total" type="integer">
+  The total amount paid for this order, in cents.
+</ResponseField>
+
+<ResponseField name="currency" type="string">
+  The currency of the transaction. Always `usd`.
+</ResponseField>
+
+<ResponseField name="tickets" type="array">
+  An array of ticket objects issued for this order.
+
+  <Expandable title="ticket fields">
+    <ResponseField name="id" type="string">
+      Unique identifier for the individual ticket (e.g., `tkt_001`).
+    </ResponseField>
+    <ResponseField name="holder_name" type="string">
+      The name of the ticket holder as recorded at purchase.
+    </ResponseField>
+    <ResponseField name="status" type="string">
+      The status of this specific ticket. Possible values: `confirmed`, `checked_in`, `refunded`, `cancelled`.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="created" type="integer">
+  Unix timestamp of when the order was created.
+</ResponseField>
+
+### Order Statuses
+
+| Status | Meaning |
+|---|---|
+| `pending` | Payment has been initiated but is not yet complete |
+| `confirmed` | Payment is complete and all tickets have been issued |
+| `partially_refunded` | One or more tickets have been refunded; others remain active |
+| `refunded` | All tickets in the order have been refunded |
+| `cancelled` | The order was cancelled before or after payment |
+
+---
+
+## List Orders for a Customer
+
+**GET** `/v1/customers/{customer_id}/orders`
+
+Returns a paginated list of all orders placed by a specific customer. You can filter by order status to narrow results.
+
+### Query Parameters
+
+<ParamField query="limit" type="integer">
+  The number of orders to return per page. Defaults to `10`. Maximum is `100`.
+</ParamField>
+
+<ParamField query="starting_after" type="string">
+  An order ID to use as a pagination cursor. Returns orders that appear after this ID in the list.
+</ParamField>
+
+<ParamField query="status" type="string">
+  Filter results to orders matching a specific status. Accepted values: `pending`, `confirmed`, `partially_refunded`, `refunded`, `cancelled`.
+</ParamField>
+
+<CodeGroup>
+```bash cURL
+curl 'https://api.kelloggtickethub.com/v1/customers/cus_abc123/orders?limit=10' \
+  -H 'Authorization: Bearer YOUR_API_KEY'
+```
+
+```bash cURL — Filter by Status
+curl 'https://api.kelloggtickethub.com/v1/customers/cus_abc123/orders?status=confirmed&limit=10' \
+  -H 'Authorization: Bearer YOUR_API_KEY'
+```
+</CodeGroup>
+
+**Example Response**
+
+```json
+{
+  "object": "list",
+  "data": [
+    {
+      "id": "ord_abc123",
+      "object": "order",
+      "status": "confirmed",
+      "customer_id": "cus_abc123",
+      "event_id": "evt_abc123",
+      "event_name": "Kellogg Leadership Summit 2025",
+      "quantity": 2,
+      "amount_total": 5000,
+      "currency": "usd",
+      "tickets": [
+        { "id": "tkt_001", "holder_name": "Jane Smith", "status": "confirmed" },
+        { "id": "tkt_002", "holder_name": "Alex Johnson", "status": "confirmed" }
+      ],
+      "created": 1700000000
+    }
+  ],
+  "has_more": false
+}
+```
+
+<Tip>
+  To retrieve the QR codes for tickets in an order, fetch each ticket individually using **GET** `/v1/tickets/{id}`. The ticket object includes a `qr_code_url` field for entry scanning.
+</Tip>

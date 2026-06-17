@@ -1,0 +1,161 @@
+---
+title: "Refunds API: Issue, Track, and Manage Ticket Refunds"
+sidebarTitle: "Refunds"
+description: "Create full or partial refunds for ticket orders, check refund status, and understand eligibility conditions and policy windows for Kellogg Ticket Hub."
+---
+
+The Refunds API lets you issue refunds for ticket orders and track their status through to completion. All refunds are processed through Stripe and are subject to the refund policy configured for the event. You can issue full or partial refunds depending on your use case.
+
+<Warning>
+  Refunds can only be issued within the event's configured refund policy window. Attempting a refund outside this window returns a `422 Unprocessable Entity` error. Check the event's `refund_policy` field before submitting a refund request.
+</Warning>
+
+---
+
+## Create a Refund
+
+**`POST /v1/refunds`**
+
+Creates a refund for an existing order. By default, the full order amount is refunded. Pass an `amount` to issue a partial refund.
+
+### Request body
+
+<ParamField body="order_id" type="string" required>
+  The unique identifier of the order to refund (e.g., `ord_abc123`). The order must be in `confirmed` or `partially_refunded` status.
+</ParamField>
+
+<ParamField body="amount" type="integer">
+  The amount to refund in cents. For example, `2500` refunds $25.00. If omitted, the full remaining order amount is refunded.
+</ParamField>
+
+<ParamField body="reason" type="string">
+  The reason for the refund. Accepted values:
+  - `requested_by_customer` — Customer initiated the refund request
+  - `duplicate` — The order was created in error or duplicated
+  - `fraudulent` — The transaction was identified as fraudulent
+</ParamField>
+
+### Example request
+
+<CodeGroup>
+
+```bash cURL — Full Refund
+curl -X POST https://api.kelloggtickethub.com/v1/refunds \
+  -H 'Authorization: Bearer YOUR_API_KEY' \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "order_id": "ord_abc123",
+    "reason": "requested_by_customer"
+  }'
+```
+
+```bash cURL — Partial Refund
+curl -X POST https://api.kelloggtickethub.com/v1/refunds \
+  -H 'Authorization: Bearer YOUR_API_KEY' \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "order_id": "ord_abc123",
+    "amount": 2500,
+    "reason": "requested_by_customer"
+  }'
+```
+
+</CodeGroup>
+
+### Example response
+
+```json
+{
+  "id": "re_abc123",
+  "object": "refund",
+  "amount": 5000,
+  "currency": "usd",
+  "status": "pending",
+  "order_id": "ord_abc123",
+  "reason": "requested_by_customer",
+  "created": 1700000000
+}
+```
+
+---
+
+## Retrieve a Refund
+
+**`GET /v1/refunds/{id}`**
+
+Retrieves the current status and details of a specific refund by its ID.
+
+### Path parameters
+
+<ParamField path="id" type="string" required>
+  The unique identifier of the refund to retrieve, prefixed with `re_`.
+</ParamField>
+
+### Example request
+
+<CodeGroup>
+
+```bash cURL
+curl https://api.kelloggtickethub.com/v1/refunds/re_abc123 \
+  -H 'Authorization: Bearer YOUR_API_KEY'
+```
+
+</CodeGroup>
+
+### Example response
+
+```json
+{
+  "id": "re_abc123",
+  "object": "refund",
+  "amount": 5000,
+  "currency": "usd",
+  "status": "succeeded",
+  "order_id": "ord_abc123",
+  "reason": "requested_by_customer",
+  "created": 1700000000
+}
+```
+
+### Response fields
+
+<ResponseField name="id" type="string">
+  Unique identifier for the refund, prefixed with `re_`.
+</ResponseField>
+
+<ResponseField name="amount" type="integer">
+  The refunded amount in cents. Divide by 100 to get the dollar value — `5000` equals $50.00.
+</ResponseField>
+
+<ResponseField name="currency" type="string">
+  The currency of the refund. Always `usd`.
+</ResponseField>
+
+<ResponseField name="status" type="string">
+  The current status of the refund. See the table below for possible values.
+</ResponseField>
+
+<ResponseField name="order_id" type="string">
+  The ID of the order this refund was issued against.
+</ResponseField>
+
+<ResponseField name="reason" type="string">
+  The reason provided when the refund was created.
+</ResponseField>
+
+<ResponseField name="created" type="integer">
+  Unix timestamp of when the refund was created.
+</ResponseField>
+
+### Refund statuses
+
+| Status | Meaning |
+|---|---|
+| `pending` | Refund has been submitted and is being processed by Stripe |
+| `succeeded` | Refund is complete and funds have been returned to the customer |
+| `failed` | Refund processing failed; contact support to resolve |
+| `canceled` | Refund was cancelled before it was processed |
+
+<Note>
+  Refunds typically take 5–10 business days to appear on the customer's statement, depending on their card issuer and bank.
+</Note>

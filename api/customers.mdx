@@ -1,0 +1,197 @@
+---
+title: "Customers API: Create, Retrieve, and List Customers"
+sidebarTitle: "Customers"
+description: "Create customer profiles, retrieve account details, and update contact information and affiliation for attendees on Kellogg Ticket Hub."
+---
+
+The Customers API lets you create and manage customer profiles, including their contact information, institutional affiliation, and saved payment methods. Customer records serve as the anchor for orders, refunds, and payment methods across the platform.
+
+---
+
+## Retrieve a Customer
+
+**GET** `/v1/customers/{id}`
+
+Retrieves a customer profile by ID, including their affiliation and default payment method.
+
+<CodeGroup>
+```bash cURL
+curl https://api.kelloggtickethub.com/v1/customers/cus_abc123 \
+  -H 'Authorization: Bearer YOUR_API_KEY'
+```
+</CodeGroup>
+
+**Example Response**
+
+```json
+{
+  "id": "cus_abc123",
+  "object": "customer",
+  "email": "jsmith@kellogg.edu",
+  "name": "Jane Smith",
+  "affiliation": "alumni",
+  "created": 1700000000,
+  "default_payment_method": "pm_abc123"
+}
+```
+
+### Response Fields
+
+<ResponseField name="id" type="string">
+  Unique identifier for the customer (e.g., `cus_abc123`).
+</ResponseField>
+
+<ResponseField name="email" type="string">
+  The customer's email address. Used for receipts, notifications, and login.
+</ResponseField>
+
+<ResponseField name="name" type="string">
+  The customer's full name.
+</ResponseField>
+
+<ResponseField name="affiliation" type="string">
+  The customer's institutional affiliation. Possible values: `student`, `alumni`, `faculty`, `staff`, `guest`.
+</ResponseField>
+
+<ResponseField name="created" type="integer">
+  Unix timestamp of when the customer record was created.
+</ResponseField>
+
+<ResponseField name="default_payment_method" type="string">
+  The ID of the customer's default saved payment method, or `null` if none is set.
+</ResponseField>
+
+---
+
+## Create a Customer
+
+**POST** `/v1/customers`
+
+Creates a new customer profile. You can optionally include an affiliation and arbitrary metadata key-value pairs.
+
+### Request Body
+
+<ParamField body="email" type="string" required>
+  The customer's email address. Must be unique within your account. Used for receipts and platform notifications.
+</ParamField>
+
+<ParamField body="name" type="string" required>
+  The customer's full name as it should appear on tickets and receipts.
+</ParamField>
+
+<ParamField body="affiliation" type="string">
+  The customer's institutional affiliation. Accepted values: `student`, `alumni`, `faculty`, `staff`, `guest`. Affiliation may determine eligibility for specific ticket types or pricing tiers.
+</ParamField>
+
+<ParamField body="metadata" type="object">
+  A set of custom key-value pairs you can attach to the customer for your own tracking purposes. Keys and values must be strings.
+
+  <Expandable title="metadata example">
+    ```json
+    {
+      "internal_id": "U-98234",
+      "department": "Finance"
+    }
+    ```
+  </Expandable>
+</ParamField>
+
+<CodeGroup>
+```bash cURL
+curl -X POST https://api.kelloggtickethub.com/v1/customers \
+  -H 'Authorization: Bearer YOUR_API_KEY' \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "email": "newuser@kellogg.edu",
+    "name": "Alex Johnson",
+    "affiliation": "student"
+  }'
+```
+
+```bash cURL — With Metadata
+curl -X POST https://api.kelloggtickethub.com/v1/customers \
+  -H 'Authorization: Bearer YOUR_API_KEY' \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "email": "newuser@kellogg.edu",
+    "name": "Alex Johnson",
+    "affiliation": "student",
+    "metadata": {
+      "internal_id": "U-98234",
+      "department": "Finance"
+    }
+  }'
+```
+</CodeGroup>
+
+**Example Response**
+
+```json
+{
+  "id": "cus_xyz789",
+  "object": "customer",
+  "email": "newuser@kellogg.edu",
+  "name": "Alex Johnson",
+  "affiliation": "student",
+  "created": 1700001000,
+  "default_payment_method": null
+}
+```
+
+---
+
+## List Customers
+
+**GET** `/v1/customers`
+
+Returns a paginated list of all customer profiles in your account. You can filter by email to look up a specific customer.
+
+### Query Parameters
+
+<ParamField query="limit" type="integer">
+  The number of customers to return per page. Defaults to `10`. Maximum is `100`.
+</ParamField>
+
+<ParamField query="starting_after" type="string">
+  A customer ID to use as a cursor for pagination. Returns records that come after this ID in the list.
+</ParamField>
+
+<ParamField query="email" type="string">
+  Filter results to return only the customer matching this exact email address.
+</ParamField>
+
+<CodeGroup>
+```bash cURL
+curl 'https://api.kelloggtickethub.com/v1/customers?limit=20' \
+  -H 'Authorization: Bearer YOUR_API_KEY'
+```
+
+```bash cURL — Filter by Email
+curl 'https://api.kelloggtickethub.com/v1/customers?email=jsmith%40kellogg.edu' \
+  -H 'Authorization: Bearer YOUR_API_KEY'
+```
+</CodeGroup>
+
+**Example Response**
+
+```json
+{
+  "object": "list",
+  "data": [
+    {
+      "id": "cus_abc123",
+      "object": "customer",
+      "email": "jsmith@kellogg.edu",
+      "name": "Jane Smith",
+      "affiliation": "alumni",
+      "created": 1700000000,
+      "default_payment_method": "pm_abc123"
+    }
+  ],
+  "has_more": false
+}
+```
+
+<Note>
+  A customer record is automatically created when a user signs up on the Kellogg Ticket Hub platform. You only need to call this endpoint when creating customers programmatically through the API.
+</Note>

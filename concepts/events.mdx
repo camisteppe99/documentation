@@ -1,0 +1,100 @@
+---
+title: "Understanding Events and Ticket Types on Kellogg Ticket Hub"
+sidebarTitle: "Events"
+description: "Learn what an event is on Kellogg Ticket Hub, how events move through their lifecycle, and which fields define each event object returned by the API."
+---
+
+Events are the core of Kellogg Ticket Hub. Every ticketed occasion hosted by the Kellogg School of Management — from intimate faculty lectures and alumni panels to large-scale networking mixers, galas, and multi-day conferences — is represented as an event on the platform. Each event has a defined date, venue, total capacity, and one or more ticket types that control how attendees can register and pay.
+
+## Event Lifecycle
+
+An event moves through a series of statuses from creation to completion. Understanding where an event sits in its lifecycle tells you whether tickets are available for purchase and what actions you can take.
+
+<Steps>
+  <Step title="Upcoming">
+    The event has been created and published, but ticket sales have not yet opened. You can view event details but cannot purchase tickets.
+  </Step>
+  <Step title="Active">
+    Ticket sales are open. You can browse ticket types, add them to your cart, and complete checkout.
+  </Step>
+  <Step title="Sold Out">
+    All available tickets across every ticket type have been claimed. No further purchases are possible unless tickets are released through cancellations.
+  </Step>
+  <Step title="Closed">
+    The organizer has manually closed ticket sales before the event, regardless of remaining capacity.
+  </Step>
+  <Step title="Completed">
+    The event has taken place. Tickets can no longer be purchased or transferred.
+  </Step>
+  <Step title="Cancelled">
+    The event has been called off. If you hold tickets, refunds are issued automatically to your original payment method.
+  </Step>
+</Steps>
+
+## Event Fields
+
+The table below describes every field returned on an event object.
+
+| Field | Type | Description |
+|---|---|---|
+| `id` | string | Unique event identifier, e.g. `evt_abc123` |
+| `name` | string | Human-readable event name |
+| `description` | string | Full event details, agenda, and speaker information |
+| `start_time` | string | Event start in ISO 8601 format, e.g. `2025-09-15T18:00:00Z` |
+| `end_time` | string | Event end in ISO 8601 format |
+| `venue` | object | Location name and street address |
+| `capacity` | integer | Total seats available across all ticket types |
+| `status` | string | One of `upcoming`, `active`, `sold_out`, `closed`, `completed`, `cancelled` |
+| `tickets_remaining` | integer | Total unsold seats across all ticket types |
+| `ticket_types` | array | Array of ticket type objects available for this event |
+
+## Sample Event Object
+
+```json
+{
+  "id": "evt_abc123",
+  "name": "Kellogg Alumni Leadership Summit 2025",
+  "description": "An evening of keynote talks and curated networking for Kellogg alumni across all graduation years.",
+  "start_time": "2025-09-15T18:00:00Z",
+  "end_time": "2025-09-15T21:30:00Z",
+  "venue": {
+    "name": "Allen Center",
+    "address": "2169 Campus Dr, Evanston, IL 60208"
+  },
+  "capacity": 400,
+  "tickets_remaining": 246,
+  "status": "active",
+  "ticket_types": [
+    {
+      "id": "tt_standard",
+      "name": "General Admission",
+      "price": 7500,
+      "currency": "usd",
+      "remaining": 182
+    },
+    {
+      "id": "tt_alumni",
+      "name": "Alumni Rate",
+      "price": 5000,
+      "currency": "usd",
+      "remaining": 64,
+      "eligibility": "alumni"
+    }
+  ]
+}
+```
+
+<Note>
+  Some events are restricted to specific groups such as current students, alumni, faculty, or staff. If you attempt to purchase a ticket type you are not eligible for, the API returns a `403 Forbidden` error. Make sure your account's `affiliation` field matches the ticket's eligibility rules before attempting checkout.
+</Note>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Tickets" icon="ticket" href="/concepts/tickets">
+    Learn how individual tickets work, including lifecycle states and QR codes.
+  </Card>
+  <Card title="Events API" icon="code" href="/api/events">
+    Explore the full Events API reference to list, retrieve, and filter events.
+  </Card>
+</CardGroup>

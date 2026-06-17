@@ -1,0 +1,130 @@
+{
+  "projectType": "saas",
+  "projectName": "Kellogg Ticket Hub",
+  "projectDescription": "A full-featured event ticketing and payment platform for purchasing, managing, and processing tickets to Kellogg events.",
+  "theme": "luma",
+  "primaryColor": "#242b2c",
+  "lightColor": "#6a6a6d",
+  "darkColor": "#ebeaea",
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Documentation",
+        "groups": [
+          {
+            "group": "Get Started",
+            "pages": [
+              "introduction",
+              "quickstart",
+              "authentication"
+            ]
+          },
+          {
+            "group": "Core Concepts",
+            "pages": [
+              "concepts/events",
+              "concepts/tickets",
+              "concepts/customers",
+              "concepts/payments"
+            ]
+          },
+          {
+            "group": "Guides",
+            "pages": [
+              "guides/purchasing-tickets",
+              "guides/managing-orders",
+              "guides/refunds-cancellations",
+              "guides/payment-methods"
+            ]
+          },
+          {
+            "group": "Integrations",
+            "pages": [
+              "integrations/webhooks",
+              "integrations/checkout"
+            ]
+          },
+          {
+            "group": "Support",
+            "pages": [
+              "support/faq",
+              "support/troubleshooting"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "API Reference",
+        "groups": [
+          {
+            "group": "Overview",
+            "pages": [
+              "api/overview",
+              "api/authentication",
+              "api/errors"
+            ]
+          },
+          {
+            "group": "Tickets & Events",
+            "pages": [
+              "api/events",
+              "api/tickets",
+              "api/checkout-sessions"
+            ]
+          },
+          {
+            "group": "Payments",
+            "pages": [
+              "api/payment-intents",
+              "api/payment-methods",
+              "api/refunds"
+            ]
+          },
+          {
+            "group": "Customers",
+            "pages": [
+              "api/customers",
+              "api/orders"
+            ]
+          },
+          {
+            "group": "Webhooks",
+            "pages": [
+              "api/webhooks"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "keyFeatures": [
+    "Event ticket purchasing and management",
+    "Secure Stripe-powered payment processing",
+    "Checkout sessions with multiple payment methods",
+    "Customer account and order management",
+    "Refund and cancellation workflows",
+    "Real-time webhook notifications",
+    "Support for credit/debit cards, wallets, and more",
+    "Invoice and receipt generation"
+  ],
+  "publicApiSurface": [
+    "POST /v1/checkout/sessions",
+    "GET /v1/checkout/sessions/{session}",
+    "POST /v1/payment_intents",
+    "GET /v1/payment_intents/{intent}",
+    "POST /v1/payment_intents/{intent}/confirm",
+    "POST /v1/payment_intents/{intent}/capture",
+    "POST /v1/payment_intents/{intent}/cancel",
+    "GET /v1/customers",
+    "POST /v1/customers",
+    "GET /v1/customers/{customer}",
+    "POST /v1/refunds",
+    "GET /v1/refunds/{refund}",
+    "GET /v1/payment_methods",
+    "POST /v1/payment_methods",
+    "GET /v1/events",
+    "GET /v1/events/{id}",
+    "POST /v1/webhook_endpoints",
+    "GET /v1/webhook_endpoints"
+  ]
+}

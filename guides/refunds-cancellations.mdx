@@ -1,0 +1,117 @@
+---
+title: 'Request a Refund or Cancel a Ticket Order on Kellogg'
+sidebarTitle: 'Refunds'
+description: 'Understand the refund policy, cancel a ticket order through the dashboard or API, and track your refund status through to completion.'
+---
+
+You can request a refund or cancel a ticket order through the Kellogg Ticket Hub dashboard or API at any time, subject to the event's refund policy. This guide explains how eligibility is determined, walks through the cancellation steps, and shows you how to track your refund from submission to completion.
+
+## Refund Policy
+
+Refund eligibility is based on how far in advance of the event you submit your request. The default policy tiers are:
+
+| Time Before Event | Refund Amount |
+|---|---|
+| More than 7 days | Full refund (100%) |
+| 3–7 days | Partial refund (50%) |
+| Fewer than 3 days | No refund |
+
+<Note>
+  Individual events may have custom refund policies set by the organizer that override the defaults above. Always check the **Refund Policy** section on the event detail page before purchasing.
+</Note>
+
+## Requesting a Refund
+
+<Tabs>
+  <Tab title="Dashboard">
+    <Steps>
+      <Step title="Navigate to your order">
+        Sign in and go to **My Orders**. Find the order you want to refund and click it to open the order detail page.
+      </Step>
+      <Step title="Click 'Request Refund'">
+        Click the **Request Refund** button. If the button is greyed out, the event's refund window has closed and refunds are no longer available for this order.
+      </Step>
+      <Step title="Select tickets and reason">
+        Choose which tickets to include in the refund (you can refund a partial quantity) and select a reason from the dropdown — for example, *Can no longer attend* or *Event details changed*.
+      </Step>
+      <Step title="Confirm the refund request">
+        Review the refund amount shown (reflecting the applicable policy tier) and click **Confirm Refund**. A confirmation email is sent immediately, and the refund is submitted to Stripe for processing back to your original payment method.
+      </Step>
+    </Steps>
+  </Tab>
+  <Tab title="API">
+    Submit a refund request by posting the `order_id` and a reason code:
+
+    ```bash
+    curl -X POST https://api.kelloggtickethub.com/v1/refunds \
+      -H 'Authorization: Bearer YOUR_API_KEY' \
+      -H 'Content-Type: application/json' \
+      -d '{
+        "order_id": "ord_abc123",
+        "reason": "requested_by_customer"
+      }'
+    ```
+
+    Valid `reason` values are `requested_by_customer`, `duplicate`, and `fraudulent`.
+
+    **Sample response:**
+
+    ```json
+    {
+      "id": "ref_live_9xKz2mP4qR",
+      "order_id": "ord_abc123",
+      "amount": 9000,
+      "currency": "usd",
+      "status": "pending",
+      "created_at": "2025-08-12T11:04:00Z"
+    }
+    ```
+
+    Save the `id` to poll the refund status later using `GET /v1/refunds/{id}`.
+  </Tab>
+</Tabs>
+
+## Refund Statuses
+
+After you submit a refund, you can track it through the following statuses on the order detail page or via the API:
+
+<CardGroup cols={3}>
+  <Card title="Pending" icon="clock">
+    Your refund has been submitted and is being processed by Stripe. No action is needed on your part.
+  </Card>
+  <Card title="Succeeded" icon="circle-check">
+    The refund is complete. Funds have been returned to your original payment method and should appear on your statement within 5–10 business days.
+  </Card>
+  <Card title="Failed" icon="circle-xmark">
+    The refund could not be processed — for example, if the original card is no longer active. Contact support to resolve.
+  </Card>
+</CardGroup>
+
+## Refund Timeline
+
+Stripe processes refund requests promptly, but the time for funds to appear on your statement depends on your card issuer:
+
+- **Credit cards:** 5–10 business days
+- **Debit cards:** 5–10 business days (may appear sooner depending on your bank)
+- **Apple Pay / Google Pay:** Applied to the underlying card on the same timeline
+
+<Tip>
+  If your refund hasn't appeared after 10 business days, contact Kellogg Ticket Hub support at support@kelloggtickethub.com and include your **Refund ID** (e.g., `ref_live_9xKz2mP4qR`) so we can investigate quickly.
+</Tip>
+
+## Cancelling Without a Refund
+
+If the refund window has passed but you can no longer attend the event, you can still cancel your ticket to free up the seat for other attendees. No refund is issued in this case.
+
+<Steps>
+  <Step title="Open the order in My Orders">
+    Navigate to **My Orders** and click the relevant order.
+  </Step>
+  <Step title="Select 'Cancel Ticket'">
+    Click **Cancel Ticket** (not **Request Refund**). Confirm the cancellation in the dialog. The ticket status changes to `cancelled` immediately and the QR code is invalidated.
+  </Step>
+</Steps>
+
+<Warning>
+  Cancellation is permanent and cannot be undone. Once a ticket is cancelled, the QR code is immediately invalidated and you will not be able to use or transfer it.
+</Warning>

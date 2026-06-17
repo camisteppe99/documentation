@@ -1,0 +1,166 @@
+---
+title: 'Manage Your Ticket Orders, Transfers, and Reservations'
+sidebarTitle: 'Managing Orders'
+description: 'View order history, download tickets, transfer reservations to another attendee, and manage your bookings through the dashboard or API.'
+---
+
+After purchasing tickets on Kellogg Ticket Hub, you have full visibility into every order — past and present — and can take actions like downloading QR codes, transferring tickets to a colleague, or cancelling a reservation. This page covers everything you need to manage your bookings through the web dashboard or the API.
+
+## Viewing Your Orders
+
+<Tabs>
+  <Tab title="Dashboard">
+    Sign in and click **My Orders** in the top navigation. You'll see a paginated list of all your ticket orders with status badges:
+
+    - **Confirmed** — payment succeeded, tickets issued
+    - **Pending** — payment is processing
+    - **Cancelled** — order was cancelled or refunded
+    - **Transferred** — ticket ownership was moved to another attendee
+
+    Click any order row to open the order detail view.
+  </Tab>
+  <Tab title="API">
+    Retrieve a paginated list of orders for a specific customer with a `GET` request:
+
+    ```bash
+    curl https://api.kelloggtickethub.com/v1/customers/cus_abc123/orders \
+      -H 'Authorization: Bearer YOUR_API_KEY'
+    ```
+
+    **Sample response:**
+
+    ```json
+    {
+      "data": [
+        {
+          "id": "ord_xyz789",
+          "customer_id": "cus_abc123",
+          "event": {
+            "id": "evt_abc123",
+            "name": "Kellogg Annual Tech Summit",
+            "date": "2025-09-15T18:00:00Z"
+          },
+          "status": "confirmed",
+          "amount_total": 9000,
+          "currency": "usd",
+          "purchase_date": "2025-07-01T14:23:00Z",
+          "tickets": [
+            { "id": "tck_001", "type": "General Admission", "seat": "GA-042" },
+            { "id": "tck_002", "type": "General Admission", "seat": "GA-043" }
+          ]
+        }
+      ],
+      "has_more": false
+    }
+    ```
+
+    Use the `limit` and `starting_after` query parameters to paginate through large order histories.
+  </Tab>
+</Tabs>
+
+## Order Details
+
+Every order object contains the following fields:
+
+```json
+{
+  "id": "ord_xyz789",
+  "customer_id": "cus_abc123",
+  "event": {
+    "id": "evt_abc123",
+    "name": "Kellogg Annual Tech Summit",
+    "date": "2025-09-15T18:00:00Z",
+    "venue": "Kellogg Hall, Chicago"
+  },
+  "tickets": [
+    {
+      "id": "tck_001",
+      "type": "General Admission",
+      "seat": "GA-042",
+      "qr_code_url": "https://assets.kelloggtickethub.com/qr/tck_001.png",
+      "status": "active"
+    }
+  ],
+  "amount_total": 9000,
+  "currency": "usd",
+  "status": "confirmed",
+  "purchase_date": "2025-07-01T14:23:00Z"
+}
+```
+
+<CardGroup cols={2}>
+  <Card title="Order ID" icon="receipt">
+    A unique identifier (e.g., `ord_xyz789`) you can use to look up, refund, or reference the order in API calls and support requests.
+  </Card>
+  <Card title="Ticket Status" icon="ticket">
+    Each ticket carries its own status — `active`, `used`, `transferred`, or `cancelled` — independent of the parent order.
+  </Card>
+</CardGroup>
+
+## Downloading Your Tickets
+
+<Steps>
+  <Step title="Open the order detail page">
+    From **My Orders**, click the order containing the tickets you want to download.
+  </Step>
+  <Step title="Download or view your QR code">
+    Click **Download Tickets** to save a PDF containing all tickets in the order, or click **View QR Code** next to an individual ticket to display it on screen. Each ticket contains a unique QR code tied to its `ticket_id` — the event check-in system scans this code at the door.
+  </Step>
+</Steps>
+
+<Tip>
+  Save your tickets to Apple Wallet or Google Wallet using the **Add to Wallet** button on the order detail page for quick access on the day of the event.
+</Tip>
+
+## Transferring a Ticket
+
+You can transfer an unused ticket to another person at any time before the event starts. The recipient receives an email with the transferred ticket attached.
+
+<Tabs>
+  <Tab title="Dashboard">
+    <Steps>
+      <Step title="Navigate to the order">
+        Open **My Orders** and click the order containing the ticket you want to transfer.
+      </Step>
+      <Step title="Initiate the transfer">
+        Click **Transfer Ticket** next to the individual ticket. In the dialog that appears, enter the recipient's email address and click **Confirm Transfer**.
+      </Step>
+      <Step title="Confirm the transfer email">
+        Both you and the recipient will receive a confirmation email. The ticket is immediately invalidated in your account and reissued under the recipient's.
+      </Step>
+    </Steps>
+  </Tab>
+  <Tab title="API">
+    Send a `POST` request with the recipient's email address:
+
+    ```bash
+    curl -X POST https://api.kelloggtickethub.com/v1/tickets/tck_001/transfer \
+      -H 'Authorization: Bearer YOUR_API_KEY' \
+      -H 'Content-Type: application/json' \
+      -d '{"recipient_email": "colleague@kellogg.edu"}'
+    ```
+
+    **Sample response:**
+
+    ```json
+    {
+      "ticket_id": "tck_001",
+      "status": "transferred",
+      "transferred_to": "colleague@kellogg.edu",
+      "transferred_at": "2025-08-10T09:15:00Z"
+    }
+    ```
+  </Tab>
+</Tabs>
+
+<Note>
+  Some events restrict ticket transfers at the organizer's discretion. If transfers are disabled for an event, the API returns a `422 Unprocessable Entity` error and the **Transfer Ticket** button will not appear in the dashboard.
+</Note>
+
+## Cancelling an Order
+
+If you need to cancel a ticket order and request a refund, see the dedicated guide for full details on eligibility windows, partial refunds, and processing timelines.
+
+<Card title="Refunds & Cancellations" icon="arrow-right" href="/guides/refunds-cancellations">
+  Learn how to cancel an order, check your refund eligibility, and track the status of a submitted refund.
+</Card>

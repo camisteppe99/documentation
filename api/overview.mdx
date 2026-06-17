@@ -1,0 +1,128 @@
+---
+title: 'Kellogg Ticket Hub REST API: Overview and Getting Started'
+sidebarTitle: 'Overview'
+description: 'Explore the Kellogg Ticket Hub REST API: base URL, v1 versioning, JSON request and response formats, cursor pagination, and per-key rate limits.'
+---
+
+The Kellogg Ticket Hub API is a RESTful API that lets you programmatically browse events, create checkout sessions, manage customers, and handle refunds. All communication happens over HTTPS, and every response — including errors — is returned as JSON.
+
+## Base URL
+
+All API requests are made to the following base URL:
+
+```
+https://api.kelloggtickethub.com
+```
+
+## API Versioning
+
+The current API version is **v1**. Every endpoint is prefixed with `/v1/`, for example `/v1/events` or `/v1/orders`. When Kellogg Ticket Hub introduces breaking changes, they are released under a new version prefix (e.g., `/v2/`) so your existing integration continues to work without modification.
+
+<Tip>
+  Pin your integration to a specific API version (e.g., `/v1/`) to avoid unexpected breakage when new versions are released.
+</Tip>
+
+## Request Format
+
+All `POST` and `PATCH` requests must send a JSON body and include the `Content-Type: application/json` header. Requests with malformed JSON will be rejected with a `400 Bad Request` response.
+
+```bash Example request headers
+curl https://api.kelloggtickethub.com/v1/events \
+  -H 'Authorization: Bearer kth_live_sk_xxxxxxxxxxxxxxxx' \
+  -H 'Content-Type: application/json' \
+  -H 'Accept: application/json'
+```
+
+## Response Format
+
+Every API response is JSON. The HTTP status code indicates the outcome of your request:
+
+- **200 OK** — Successful `GET` or `PATCH` request.
+- **201 Created** — Successful `POST` that created a new resource.
+- **204 No Content** — Successful `DELETE` request; no body is returned.
+
+Successful responses include the resource's `id`, `object` type, and `created` timestamp alongside its fields:
+
+```json Sample success response
+{
+  "id": "evt_01HXYZ9ABCDE",
+  "object": "event",
+  "created": 1713820800,
+  "name": "Kellogg Summer Jazz Night",
+  "venue": "Northside Amphitheater",
+  "date": "2025-08-15T19:00:00Z",
+  "status": "on_sale"
+}
+```
+
+When a request fails, the API returns an `error` object with a machine-readable `code`, a human-readable `message`, and — when relevant — the `param` that triggered the error:
+
+```json Error response
+{
+  "error": {
+    "code": "validation_error",
+    "message": "The 'quantity' field must be a positive integer.",
+    "param": "quantity"
+  }
+}
+```
+
+See the [Errors](/api/errors) reference for the full list of status codes and error codes.
+
+## Pagination
+
+All list endpoints return a paginated envelope. Use the `limit` and `starting_after` query parameters to page through results.
+
+```json Paginated list response
+{
+  "object": "list",
+  "data": [
+    {
+      "id": "evt_01HXYZ9ABCDE",
+      "object": "event",
+      "name": "Kellogg Summer Jazz Night"
+    },
+    {
+      "id": "evt_01HXYZ9FGHIJ",
+      "object": "event",
+      "name": "Downtown Comedy Showcase"
+    }
+  ],
+  "has_more": true,
+  "url": "/v1/events"
+}
+```
+
+<ParamField query="limit" type="integer" default="10">
+  The maximum number of objects to return. Accepts a value between `1` and `100`.
+</ParamField>
+
+<ParamField query="starting_after" type="string">
+  A cursor for use in pagination. Pass the `id` of the last object from the previous page to retrieve the next page of results.
+</ParamField>
+
+When `has_more` is `true`, there are additional pages available. Fetch the next page by passing the `id` of the final item in the current `data` array as `starting_after`.
+
+## Rate Limits
+
+The API enforces a limit of **100 requests per minute** per API key. If you exceed this limit, the API responds with `429 Too Many Requests`. Check the `Retry-After` header to find out how many seconds to wait before retrying.
+
+```
+HTTP/1.1 429 Too Many Requests
+Retry-After: 12
+```
+
+<Note>
+  Automated scripts and batch jobs should implement exponential backoff to gracefully handle rate limit responses rather than hammering the API.
+</Note>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Authentication" icon="key" href="/api/authentication">
+    Learn how to authenticate your requests using API key Bearer tokens.
+  </Card>
+  <Card title="Errors" icon="circle-exclamation" href="/api/errors">
+    Understand HTTP status codes and error codes to handle failures gracefully.
+  </Card>
+</CardGroup>

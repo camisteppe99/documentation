@@ -1,0 +1,122 @@
+---
+title: 'Accepted Payment Methods and Wallets on Kellogg Ticket Hub'
+sidebarTitle: 'Payment Methods'
+description: 'Explore supported cards, digital wallets, and Link checkout. Learn how to save, reuse, and remove payment methods for a faster checkout experience.'
+---
+
+Kellogg Ticket Hub supports a range of payment methods powered by Stripe, giving you a fast and secure checkout experience whether you're buying tickets on the web or through an API-integrated application. All payment data is handled entirely by Stripe — Kellogg Ticket Hub never stores your raw card details.
+
+## Supported Payment Methods
+
+<CardGroup cols={3}>
+  <Card title="Credit & Debit Cards" icon="credit-card">
+    Pay with **Visa**, **Mastercard**, **American Express**, or **Discover**. Both credit and debit cards are accepted. 3D Secure authentication is handled automatically when required by your issuer.
+  </Card>
+  <Card title="Apple Pay & Google Pay" icon="mobile">
+    Complete your purchase in one tap using the payment cards already saved on your device. Apple Pay is available on Safari on iOS and macOS; Google Pay is available on Chrome and Android browsers.
+  </Card>
+  <Card title="Link" icon="link">
+    Stripe's accelerated checkout network. After your first purchase with Link, future checkouts are completed in one click — no need to re-enter card details. Link is available to any customer with an existing Stripe Link account.
+  </Card>
+</CardGroup>
+
+## Saving a Payment Method
+
+Speed up future purchases by saving a payment method to your Kellogg Ticket Hub account.
+
+<Tabs>
+  <Tab title="Dashboard">
+    <Steps>
+      <Step title="Opt in during checkout">
+        On the checkout page, check the box labelled **Save payment method for future purchases** before clicking **Confirm Purchase**. Your card is securely tokenised and stored in Stripe — never on Kellogg Ticket Hub's own servers.
+      </Step>
+      <Step title="View saved methods">
+        After saving, your card appears under **Settings → Payment Methods** in your account. You can see the last four digits, expiry date, and card brand for each saved method.
+      </Step>
+      <Step title="Use a saved method at checkout">
+        On your next purchase, saved payment methods appear at the top of the checkout form. Select one and click **Confirm Purchase** — no need to re-enter any card details.
+      </Step>
+    </Steps>
+  </Tab>
+  <Tab title="API">
+    Attach an existing Stripe `PaymentMethod` object to a customer record so it becomes available for future checkouts:
+
+    ```bash
+    curl -X POST https://api.kelloggtickethub.com/v1/payment_methods/pm_1Abc2Def3Ghi/attach \
+      -H 'Authorization: Bearer YOUR_API_KEY' \
+      -H 'Content-Type: application/json' \
+      -d '{"customer_id": "cus_abc123"}'
+    ```
+
+    **Sample response:**
+
+    ```json
+    {
+      "id": "pm_1Abc2Def3Ghi",
+      "customer": "cus_abc123",
+      "type": "card",
+      "card": {
+        "brand": "visa",
+        "last4": "4242",
+        "exp_month": 12,
+        "exp_year": 2027
+      },
+      "created": 1722470400
+    }
+    ```
+
+    Once attached, pass `payment_method: "pm_1Abc2Def3Ghi"` and `customer: "cus_abc123"` when creating a Checkout Session to pre-select this card for the customer.
+  </Tab>
+</Tabs>
+
+## Removing a Saved Payment Method
+
+<Tabs>
+  <Tab title="Dashboard">
+    <Steps>
+      <Step title="Open Payment Methods">
+        Go to **Settings → Payment Methods** in your account.
+      </Step>
+      <Step title="Remove the card">
+        Click the **Remove** button next to the card you want to delete. Confirm in the dialog. The card is immediately detached and will no longer appear at checkout.
+      </Step>
+    </Steps>
+  </Tab>
+  <Tab title="API">
+    Send a `DELETE` request with the `PaymentMethod` ID:
+
+    ```bash
+    curl -X DELETE https://api.kelloggtickethub.com/v1/payment_methods/pm_1Abc2Def3Ghi \
+      -H 'Authorization: Bearer YOUR_API_KEY'
+    ```
+
+    A successful deletion returns a `204 No Content` response. The payment method is detached from the customer and can no longer be used for purchases.
+  </Tab>
+</Tabs>
+
+## Failed Payments
+
+If a payment fails during checkout, Stripe displays an inline error message immediately — you don't need to restart the checkout flow. Common causes include:
+
+<CardGroup cols={2}>
+  <Card title="Insufficient Funds" icon="circle-minus">
+    Your card doesn't have enough available balance. Try a different card or contact your bank to increase your limit.
+  </Card>
+  <Card title="Incorrect Card Details" icon="triangle-exclamation">
+    A typo in the card number, expiry, or CVV. Double-check your details and retry.
+  </Card>
+  <Card title="Issuer Decline" icon="ban">
+    Your card issuer blocked the transaction — often for security reasons. Contact your bank to authorise the charge, then retry.
+  </Card>
+  <Card title="Expired Card" icon="calendar-xmark">
+    The card's expiry date has passed. Update your saved payment method or enter a current card.
+  </Card>
+</CardGroup>
+
+<Warning>
+  Three consecutive failed payment attempts may temporarily lock your checkout session as a fraud prevention measure. If this happens, wait a few minutes before trying again, or start a new checkout session with a different payment method.
+</Warning>
+
+<Tip>
+  If you continue to experience payment failures after trying multiple cards, reach out to support at support@kelloggtickethub.com with your session ID so our team can investigate on your behalf.
+</Tip>

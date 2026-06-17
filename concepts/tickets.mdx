@@ -1,0 +1,100 @@
+---
+title: "How Tickets Work: Lifecycle, QR Codes, and Transfers"
+sidebarTitle: "Tickets"
+description: "Understand what a ticket represents, the available ticket types, how tickets move through their lifecycle, and how QR codes enable check-in."
+---
+
+A ticket is your confirmed reservation to attend an event on Kellogg Ticket Hub. Each ticket is linked to a specific event, a ticket type that determines your access level and price, and the attendee who holds it. When you complete a purchase, the platform generates a ticket record and emails a QR code to the address on your account — that QR code is your entry pass on the day of the event.
+
+## Ticket Types
+
+Different events offer different ticket types to reflect pricing tiers, eligibility groups, and access levels. The table below summarises the types you may encounter.
+
+| Type | Description |
+|---|---|
+| `standard` | General admission, open to any registered user |
+| `vip` | Premium access, may include reserved seating or exclusive areas |
+| `student` | Discounted rate restricted to current Kellogg students |
+| `alumni` | Discounted rate restricted to verified Kellogg alumni |
+| `speaker_guest` | Complimentary ticket issued to invited speakers or official guests |
+
+Each ticket type carries its own price, available capacity, and eligibility rules. Attempting to purchase a type you are not eligible for returns a `403 Forbidden` response.
+
+## Ticket Lifecycle
+
+Every ticket moves through the following states from the moment you initiate checkout to the conclusion of the event.
+
+<Steps>
+  <Step title="Reserved">
+    A seat has been held for you during checkout. The reservation expires if payment is not completed within the session window (typically 15 minutes).
+  </Step>
+  <Step title="Confirmed">
+    Payment has succeeded. Your ticket is valid and a QR code has been sent to your email.
+  </Step>
+  <Step title="Checked In">
+    Your QR code was scanned at the venue entrance. This status is set by event staff at the door.
+  </Step>
+  <Step title="Cancelled">
+    The ticket was cancelled before the event — either by you, by the organizer, or because the event itself was cancelled.
+  </Step>
+  <Step title="Refunded">
+    A refund has been issued to your original payment method. A ticket may move directly to `refunded` after `confirmed` without passing through `cancelled`.
+  </Step>
+</Steps>
+
+## Ticket Fields
+
+| Field | Type | Description |
+|---|---|---|
+| `id` | string | Unique ticket identifier, e.g. `tkt_xyz789` |
+| `event_id` | string | The ID of the event this ticket is for |
+| `ticket_type` | string | The type of ticket purchased (e.g. `alumni`, `vip`) |
+| `holder_name` | string | Full name of the attendee |
+| `holder_email` | string | Email address where the QR code is delivered |
+| `status` | string | One of `reserved`, `confirmed`, `checked_in`, `cancelled`, `refunded` |
+| `qr_code_url` | string | URL to the ticket's unique QR code image |
+| `purchased_at` | string | Purchase timestamp in ISO 8601 format |
+
+## Sample Ticket Object
+
+```json
+{
+  "id": "tkt_xyz789",
+  "event_id": "evt_abc123",
+  "ticket_type": "alumni",
+  "holder_name": "Jordan Rivera",
+  "holder_email": "jordan.rivera@example.com",
+  "status": "confirmed",
+  "qr_code_url": "https://tickets.kellogg.edu/qr/tkt_xyz789.png",
+  "purchased_at": "2025-08-02T14:23:11Z"
+}
+```
+
+## QR Codes
+
+Every ticket that reaches `confirmed` status is assigned a unique QR code. Kellogg Ticket Hub emails this code to the `holder_email` address automatically after payment succeeds. Event staff scan the QR code at the venue entrance to mark your ticket as `checked_in`.
+
+<Tip>
+  Save your QR code image to your device before you arrive at the event. Venue Wi-Fi and mobile data can be unreliable in large crowds, and having the image downloaded offline guarantees a smooth entry.
+</Tip>
+
+## Transferring Tickets
+
+You can transfer a confirmed ticket to another attendee if your plans change. Transferring updates the `holder_name` and `holder_email` on the ticket and sends a fresh QR code to the new holder. The original QR code is immediately invalidated.
+
+<Note>
+  Some ticket types — such as `student` or `alumni` — restrict transfers to recipients who meet the same eligibility requirements. You'll receive a validation error if the intended recipient does not qualify.
+</Note>
+
+For step-by-step instructions on initiating a transfer, see the [Managing Orders](/guides/managing-orders) guide.
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Managing Orders" icon="arrow-right-arrow-left" href="/guides/managing-orders">
+    Learn how to view, transfer, and cancel tickets from your account.
+  </Card>
+  <Card title="Tickets API" icon="code" href="/api/tickets">
+    Explore the full Tickets API reference to retrieve and manage ticket records.
+  </Card>
+</CardGroup>

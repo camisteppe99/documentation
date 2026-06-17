@@ -1,0 +1,206 @@
+---
+title: 'Set Up Webhooks for Real-Time Ticket Hub Notifications'
+sidebarTitle: 'Webhooks'
+description: 'Set up webhook endpoints and handle real-time event notifications from Kellogg Ticket Hub to keep your application reliably in sync.'
+---
+
+Kellogg Ticket Hub can notify your server in real time whenever important events occur — like a new ticket purchase, a refund, or a ticket transfer — using webhooks. Instead of polling the API for updates, your server receives an HTTP POST request the moment an event fires, letting you react instantly and keep your data in sync.
+
+## How Webhooks Work
+
+When an event occurs in Ticket Hub, the platform sends an HTTP POST request to every registered endpoint URL that subscribes to that event type. Your server must respond with an HTTP `200` status within **30 seconds**, or the delivery is considered failed and Ticket Hub retries automatically.
+
+**Retry schedule (exponential backoff):**
+
+| Attempt | Delay after previous failure |
+|---------|------------------------------|
+| 1 | 1 minute |
+| 2 | 5 minutes |
+| 3 | 30 minutes |
+| 4 | 2 hours |
+| 5 | 12 hours |
+
+After five failed attempts, the event is marked undeliverable and no further retries occur.
+
+## Registering a Webhook Endpoint
+
+<Tabs>
+  <Tab title="Dashboard">
+    <Steps>
+      <Step title="Open Webhook Settings">
+        In the Ticket Hub dashboard, navigate to **Settings → Webhooks**.
+      </Step>
+      <Step title="Add an Endpoint">
+        Click **Add endpoint** to open the endpoint configuration form.
+      </Step>
+      <Step title="Enter Your URL">
+        Enter your publicly accessible endpoint URL. The URL must use **HTTPS** — plain HTTP endpoints are rejected.
+      </Step>
+      <Step title="Select Event Types">
+        Choose the event types you want to subscribe to. You can select individual events or subscribe to all events in a category.
+      </Step>
+      <Step title="Save Your Signing Secret">
+        After saving, Ticket Hub displays your **webhook signing secret** once. Copy it immediately and store it securely — you will use it to verify every incoming payload.
+      </Step>
+    </Steps>
+  </Tab>
+  <Tab title="API">
+    Send a `POST` request to `/v1/webhook_endpoints` with your endpoint URL and the list of events you want to receive:
+
+    ```bash
+    curl -X POST https://api.kelloggtickethub.com/v1/webhook_endpoints \
+      -H 'Authorization: Bearer YOUR_API_KEY' \
+      -H 'Content-Type: application/json' \
+      -d '{
+        "url": "https://yourapp.com/webhooks/tickethub",
+        "enabled_events": [
+          "checkout.session.completed",
+          "ticket.confirmed",
+          "refund.created",
+          "refund.succeeded"
+        ]
+      }'
+    ```
+
+    A successful response returns the new endpoint object, including the one-time signing secret:
+
+    ```json
+    {
+      "id": "whe_01jk4m8t9x2p3qr5vz6n7c0w",
+      "url": "https://yourapp.com/webhooks/tickethub",
+      "enabled_events": [
+        "checkout.session.completed",
+        "ticket.confirmed",
+        "refund.created",
+        "refund.succeeded"
+      ],
+      "status": "active",
+      "secret": "whsec_live_abc123xyz789"
+    }
+    ```
+
+    <Warning>
+      The `secret` field is only returned in this creation response. Store it in your secrets manager immediately — you cannot retrieve it again from the API.
+    </Warning>
+  </Tab>
+</Tabs>
+
+## Webhook Event Types
+
+| Event | When it fires |
+|-------|---------------|
+| `checkout.session.completed` | A checkout session was successfully paid |
+| `ticket.confirmed` | A ticket has been confirmed and issued |
+| `ticket.cancelled` | A ticket was cancelled |
+| `ticket.transferred` | A ticket was transferred to a new holder |
+| `refund.created` | A refund was initiated |
+| `refund.succeeded` | A refund completed successfully |
+| `refund.failed` | A refund attempt failed |
+
+## Verifying Webhook Signatures
+
+Every webhook request includes a `Kellogg-Signature` header containing an HMAC-SHA256 signature computed from the raw request body and your endpoint's signing secret. You must verify this signature before processing any event.
+
+<Warning>
+  Never skip signature verification. Without it, anyone who knows your endpoint URL can send forged events or replay old payloads to manipulate your application.
+</Warning>
+
+The example below shows how to verify the signature and handle events in an Express application:
+
+```javascript webhook-handler.js
+const crypto = require('crypto');
+
+function verifyWebhook(payload, signature, secret) {
+  const expectedSig = crypto
+    .createHmac('sha256', secret)
+    .update(payload)
+    .digest('hex');
+  return crypto.timingSafeEqual(
+    Buffer.from(signature),
+    Buffer.from(expectedSig)
+  );
+}
+
+// Express handler example
+app.post('/webhooks/tickethub', express.raw({ type: 'application/json' }), (req, res) => {
+  const sig = req.headers['kellogg-signature'];
+  if (!verifyWebhook(req.body, sig, process.env.WEBHOOK_SECRET)) {
+    return res.status(400).send('Invalid signature');
+  }
+
+  const event = JSON.parse(req.body);
+
+  switch (event.type) {
+    case 'checkout.session.completed':
+      // Fulfill the order
+      break;
+    case 'refund.succeeded':
+      // Update your records
+      break;
+  }
+
+  res.json({ received: true });
+});
+```
+
+<Note>
+  Use `express.raw()` — not `express.json()` — as your body parser. Signature verification requires the **raw** request body bytes. Parsing the body as JSON before verification will cause the signature check to fail.
+</Note>
+
+## Webhook Payload Structure
+
+Every webhook payload follows the same envelope format regardless of event type. The `data.object` field contains the resource that triggered the event.
+
+```json
+{
+  "id": "evt_whk_abc123",
+  "type": "checkout.session.completed",
+  "created": 1700000000,
+  "data": {
+    "object": {
+      "id": "cs_abc123",
+      "event_id": "evt_abc123",
+      "customer_id": "cus_abc123",
+      "amount_total": 5000,
+      "currency": "usd",
+      "status": "complete"
+    }
+  }
+}
+```
+
+| Field | Description |
+|-------|-------------|
+| `id` | Unique identifier for this webhook delivery |
+| `type` | The event type string (see [Event Types](#webhook-event-types)) |
+| `created` | Unix timestamp of when the event was created |
+| `data.object` | The resource associated with the event |
+
+## Testing Webhooks Locally
+
+<Tip>
+  Use a tool like [ngrok](https://ngrok.com) during local development to expose your local server to the internet. Run `ngrok http 3000` to get a temporary HTTPS URL you can register as a webhook endpoint, then watch live request logs in the ngrok dashboard.
+</Tip>
+
+<CardGroup cols={2}>
+  <Card title="Send a Test Event" icon="paper-plane">
+    From **Settings → Webhooks**, select your endpoint and click **Send test event** to dispatch a sample payload for any event type without triggering real activity.
+  </Card>
+  <Card title="View Delivery Logs" icon="list">
+    The **Recent deliveries** panel shows every delivery attempt, its HTTP status code, response body, and latency — useful for debugging failed handlers.
+  </Card>
+</CardGroup>
+
+## Common Issues
+
+<AccordionGroup>
+  <Accordion title="My endpoint returns 200 but Ticket Hub still retries the event">
+    Ticket Hub reads the HTTP status code of your response, not the response body. Make sure your handler returns exactly `200 OK` and does not close the connection before the status line is sent. Returning `2xx` codes other than `200` (e.g., `204`) may also cause unexpected behavior — use `200` explicitly.
+  </Accordion>
+  <Accordion title="Signature verification keeps failing">
+    The most common cause is that your web framework parses the request body before it reaches your handler, modifying the raw bytes. Ensure you are reading the **raw** body (e.g., `express.raw()` in Express or `request.body` as bytes in Flask) before computing the HMAC. Also confirm that you are using the signing secret for the specific endpoint receiving the request, not a different endpoint's secret.
+  </Accordion>
+  <Accordion title="I missed events while my server was down">
+    Navigate to **Settings → Webhooks → Recent deliveries** in the dashboard and manually retry any failed deliveries. You can also query missed events via the Events API using the `created` timestamp range to replay them in order.
+  </Accordion>
+</AccordionGroup>

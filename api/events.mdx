@@ -1,0 +1,217 @@
+---
+title: "Events API: List, Filter, and Retrieve Event Details"
+sidebarTitle: "Events"
+description: "Browse and filter all events on Kellogg Ticket Hub, retrieve full event details, ticket types, real-time availability, and venue information."
+---
+
+The Events API lets you list all available events and retrieve details about a specific event, including ticket types and availability. Use these endpoints to power event discovery pages, check seat availability in real time, or build integrations that surface upcoming programming to your users.
+
+---
+
+## List all events
+
+**`GET /v1/events`**
+
+Returns a paginated list of upcoming and active events. You can filter by status, limit the result set, and search by keyword.
+
+### Query parameters
+
+<ParamField query="status" type="string">
+  Filter events by their current status. Accepted values: `upcoming`, `active`,
+  `sold_out`, `closed`, `cancelled`. Omit this parameter to return events in all
+  statuses.
+</ParamField>
+
+<ParamField query="limit" type="integer">
+  Number of event objects to return per page. Defaults to `10`. Maximum is
+  `100`.
+</ParamField>
+
+<ParamField query="starting_after" type="string">
+  A cursor for use in pagination. Pass the `id` of the last event returned in
+  the previous page to fetch the next page of results.
+</ParamField>
+
+<ParamField query="search" type="string">
+  A free-text search string. The API matches against event names and
+  descriptions. Partial matches are supported.
+</ParamField>
+
+### Example request
+
+<CodeGroup>
+
+```bash cURL
+curl 'https://api.kelloggtickethub.com/v1/events?status=active&limit=5' \
+  -H 'Authorization: Bearer YOUR_API_KEY'
+```
+
+</CodeGroup>
+
+### Example response
+
+```json
+{
+  "object": "list",
+  "data": [
+    {
+      "id": "evt_abc123",
+      "object": "event",
+      "name": "Kellogg Leadership Summit 2025",
+      "description": "Annual gathering of Kellogg alumni and current students.",
+      "start_time": "2025-03-15T09:00:00Z",
+      "end_time": "2025-03-15T18:00:00Z",
+      "venue": {
+        "name": "Allen Center",
+        "address": "2169 Campus Dr, Evanston, IL 60208"
+      },
+      "status": "active",
+      "capacity": 200,
+      "tickets_remaining": 47,
+      "ticket_types": [
+        { "id": "tt_std", "name": "Standard", "price": 2500, "currency": "usd" },
+        { "id": "tt_alum", "name": "Alumni", "price": 1500, "currency": "usd" }
+      ]
+    }
+  ],
+  "has_more": true
+}
+```
+
+### Response fields
+
+<ResponseField name="object" type="string">
+  Always `"list"` for this endpoint.
+</ResponseField>
+
+<ResponseField name="data" type="array">
+  An array of event objects matching your query parameters.
+
+  <Expandable title="Event object fields">
+    <ResponseField name="id" type="string">
+      Unique identifier for the event, prefixed with `evt_`.
+    </ResponseField>
+
+    <ResponseField name="name" type="string">
+      Display name of the event.
+    </ResponseField>
+
+    <ResponseField name="start_time" type="string">
+      ISO 8601 timestamp indicating when the event begins, in UTC.
+    </ResponseField>
+
+    <ResponseField name="end_time" type="string">
+      ISO 8601 timestamp indicating when the event ends, in UTC.
+    </ResponseField>
+
+    <ResponseField name="venue" type="object">
+      Object containing `name` (string) and `address` (string) for the event
+      location.
+    </ResponseField>
+
+    <ResponseField name="status" type="string">
+      Current event status. One of `upcoming`, `active`, `sold_out`, `closed`,
+      or `cancelled`.
+    </ResponseField>
+
+    <ResponseField name="capacity" type="integer">
+      Total number of seats available for the event.
+    </ResponseField>
+
+    <ResponseField name="tickets_remaining" type="integer">
+      Number of tickets still available for purchase. Updates in real time as
+      orders are placed.
+    </ResponseField>
+
+    <ResponseField name="ticket_types" type="array">
+      List of purchasable ticket types for this event.
+
+      <Expandable title="Ticket type fields">
+        <ResponseField name="id" type="string">
+          Unique identifier for the ticket type, prefixed with `tt_`. Pass this
+          value as `ticket_type_id` when creating a Checkout Session.
+        </ResponseField>
+
+        <ResponseField name="name" type="string">
+          Display name of the ticket type, such as `"Standard"` or `"Alumni"`.
+        </ResponseField>
+
+        <ResponseField name="price" type="integer">
+          Price of the ticket type in the smallest currency unit (cents for USD).
+          For example, `2500` represents $25.00.
+        </ResponseField>
+
+        <ResponseField name="currency" type="string">
+          Three-letter ISO 4217 currency code, e.g. `"usd"`.
+        </ResponseField>
+      </Expandable>
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="has_more" type="boolean">
+  `true` if additional pages of results exist. Use the `id` of the last item in
+  `data` as the `starting_after` cursor to fetch the next page.
+</ResponseField>
+
+<Note>
+  Prices are expressed in the smallest currency unit. For USD, divide by 100 to
+  get the dollar amount — `2500` equals $25.00.
+</Note>
+
+---
+
+## Retrieve an event
+
+**`GET /v1/events/{id}`**
+
+Retrieves a single event object by its unique ID. The response contains the same fields as a list item, plus the full event description and complete venue details.
+
+### Path parameters
+
+<ParamField path="id" type="string" required>
+  The unique identifier of the event to retrieve, e.g. `evt_abc123`.
+</ParamField>
+
+### Example request
+
+<CodeGroup>
+
+```bash cURL
+curl https://api.kelloggtickethub.com/v1/events/evt_abc123 \
+  -H 'Authorization: Bearer YOUR_API_KEY'
+```
+
+</CodeGroup>
+
+### Example response
+
+```json
+{
+  "id": "evt_abc123",
+  "object": "event",
+  "name": "Kellogg Leadership Summit 2025",
+  "description": "Annual gathering of Kellogg alumni and current students focused on leadership, innovation, and community building.",
+  "start_time": "2025-03-15T09:00:00Z",
+  "end_time": "2025-03-15T18:00:00Z",
+  "venue": {
+    "name": "Allen Center",
+    "address": "2169 Campus Dr, Evanston, IL 60208"
+  },
+  "status": "active",
+  "capacity": 200,
+  "tickets_remaining": 47,
+  "ticket_types": [
+    { "id": "tt_std", "name": "Standard", "price": 2500, "currency": "usd" },
+    { "id": "tt_alum", "name": "Alumni", "price": 1500, "currency": "usd" }
+  ]
+}
+```
+
+The response is a single event object with all fields described in the [List all events](#list-all-events) section above.
+
+<Tip>
+  Before creating a Checkout Session, check `tickets_remaining` on the event
+  object to confirm availability. For high-demand events, availability can
+  change between your read and the user's purchase attempt.
+</Tip>

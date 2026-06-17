@@ -1,0 +1,126 @@
+---
+title: 'How to Browse Events and Purchase Tickets on Kellogg'
+sidebarTitle: 'Purchasing Tickets'
+description: 'Learn how to browse events, select tickets, and complete a secure purchase on Kellogg Ticket Hub — through the dashboard or the API.'
+---
+
+Kellogg Ticket Hub makes it straightforward to find events and secure your tickets in just a few steps. Whether you prefer clicking through the web dashboard or integrating directly with our API, this guide walks you through the full purchase flow — from discovering an event to receiving your confirmation email with a QR code.
+
+<Tabs>
+  <Tab title="Dashboard">
+    <Steps>
+      <Step title="Sign in to Kellogg Ticket Hub">
+        Navigate to [kelloggtickethub.com](https://kelloggtickethub.com) and sign in with your account credentials. If you don't have an account yet, click **Sign Up** and complete registration before proceeding.
+      </Step>
+      <Step title="Browse and filter events">
+        Open the **Events** page from the main navigation. Use the filter controls to narrow results by date range, category (e.g., Conferences, Workshops, Networking), or keyword. Each event card shows the date, venue, and starting ticket price.
+      </Step>
+      <Step title="Select your ticket type and quantity">
+        Click any event card to open the event detail page. Choose your preferred **ticket type** (General Admission, VIP, Student, etc.) from the dropdown, then set your desired **quantity**. Available seats update in real time.
+      </Step>
+      <Step title="Proceed to Checkout">
+        Click the **Proceed to Checkout** button. Review your order summary — event name, ticket type, quantity, and total — before continuing.
+      </Step>
+      <Step title="Enter payment details and confirm">
+        Enter your payment information on the secure checkout page. Kellogg Ticket Hub accepts major credit and debit cards as well as **Apple Pay** and **Google Pay**. Click **Confirm Purchase** to complete the transaction.
+      </Step>
+      <Step title="Check your email for confirmation">
+        After a successful payment, you'll receive a confirmation email at your registered address. The email includes your order summary and one QR code per ticket, ready to scan at the event door.
+      </Step>
+    </Steps>
+  </Tab>
+  <Tab title="API">
+    <Steps>
+      <Step title="List available events">
+        Send a `GET` request to retrieve the current list of published events. Replace `YOUR_API_KEY` with your secret key from the Kellogg Ticket Hub developer dashboard.
+
+        ```bash
+        curl https://api.kelloggtickethub.com/v1/events \
+          -H 'Authorization: Bearer YOUR_API_KEY'
+        ```
+
+        **Sample response:**
+
+        ```json
+        {
+          "data": [
+            {
+              "id": "evt_abc123",
+              "name": "Kellogg Annual Tech Summit",
+              "status": "active",
+              "date": "2025-09-15T18:00:00Z",
+              "venue": "Kellogg Hall, Chicago",
+              "ticket_types": [
+                {
+                  "id": "tkt_standard",
+                  "name": "General Admission",
+                  "price": 4500,
+                  "currency": "usd",
+                  "available": 120
+                },
+                {
+                  "id": "tkt_vip",
+                  "name": "VIP",
+                  "price": 12000,
+                  "currency": "usd",
+                  "available": 15
+                }
+              ]
+            }
+          ],
+          "has_more": false
+        }
+        ```
+
+        Use the `id` and `ticket_types[].id` values from this response in the next step.
+      </Step>
+      <Step title="Create a Checkout Session">
+        Create a Stripe-powered Checkout Session by posting the event ID, ticket type, quantity, and redirect URLs. The `success_url` and `cancel_url` are the pages in your application that Stripe redirects to after the user completes or abandons payment.
+
+        ```bash
+        curl -X POST https://api.kelloggtickethub.com/v1/checkout/sessions \
+          -H 'Authorization: Bearer YOUR_API_KEY' \
+          -H 'Content-Type: application/json' \
+          -d '{
+            "event_id": "evt_abc123",
+            "ticket_type_id": "tkt_standard",
+            "quantity": 2,
+            "success_url": "https://yourapp.com/success",
+            "cancel_url": "https://yourapp.com/cancel"
+          }'
+        ```
+
+        **Sample response:**
+
+        ```json
+        {
+          "id": "cs_live_a1B2c3D4e5F6g7H8",
+          "url": "https://checkout.stripe.com/pay/cs_live_a1B2c3D4e5F6g7H8",
+          "status": "open",
+          "amount_total": 9000,
+          "currency": "usd",
+          "expires_at": 1725484800
+        }
+        ```
+
+        Save the `id` — you'll use it to poll the session status. Redirect your user to the `url` immediately.
+      </Step>
+      <Step title="Redirect the user to the Checkout URL">
+        Send your user to the `url` returned in the previous step. Stripe's hosted checkout page collects all payment details securely, including support for cards, Apple Pay, Google Pay, and Link. You don't need to handle any payment data directly.
+      </Step>
+      <Step title="Handle the post-payment redirect">
+        After a successful payment, Stripe redirects the user to your `success_url`. At that point, Kellogg Ticket Hub automatically emails the purchased tickets — each with a unique QR code — to the customer's registered email address.
+
+        You can also append `?session_id={CHECKOUT_SESSION_ID}` to your `success_url` template and read the session ID on your success page to display an order summary to the user.
+      </Step>
+    </Steps>
+
+    <Note>
+      Checkout sessions expire after **24 hours**. If the session expires before the user completes payment, create a new session and redirect the user again.
+    </Note>
+
+    <Tip>
+      Save the session `id` and poll the session status at any time with a `GET` request to `/v1/checkout/sessions/{id}`. This lets you confirm payment programmatically without relying solely on the redirect.
+    </Tip>
+  </Tab>
+</Tabs>

@@ -1,0 +1,140 @@
+---
+title: "Frequently Asked Questions About Kellogg Ticket Hub"
+sidebarTitle: "FAQ"
+description: "Find answers to common questions about purchasing tickets, managing your account, processing refunds, and integrating with the Kellogg Ticket Hub API."
+---
+
+Whether you're buying your first ticket or building an integration, this page answers the most common questions about Kellogg Ticket Hub — from purchasing and payments to account management and developer tooling.
+
+## Tickets & Purchasing
+
+<Accordion title="How do I purchase a ticket?">
+  Sign in to your Kellogg Ticket Hub account, then browse the events listing to find the event you want to attend. Select your preferred ticket type, review the details, and proceed to checkout to complete your purchase.
+</Accordion>
+
+<Accordion title="Can I buy tickets for someone else?">
+  Yes. During checkout, enter the attendee's name and email address in the **Attendee Details** fields. The ticket QR code will be sent directly to that email address — not to yours — so make sure you enter it correctly before confirming.
+</Accordion>
+
+<Accordion title="How many tickets can I buy per event?">
+  Each event enforces a per-person purchase limit, typically between 1 and 4 tickets. You can find the exact limit displayed on the event page before you begin checkout.
+</Accordion>
+
+<Accordion title="Why can't I see certain events?">
+  Some events are restricted by Kellogg affiliation — for example, student-only, alumni, or faculty events. Sign in with your Kellogg credentials to unlock all events you're eligible to attend. If you believe you should have access to a specific event but can't see it, contact support.
+</Accordion>
+
+<Accordion title="What happens if an event is cancelled?">
+  If an event is cancelled, you'll receive an email notification at the address on your account. You'll also be automatically refunded to your original payment method — no action is required on your part. Allow 5–10 business days for the refund to appear on your statement.
+</Accordion>
+
+---
+
+## Payments & Refunds
+
+<Accordion title="What payment methods are accepted?">
+  Kellogg Ticket Hub accepts the following payment methods, all processed securely through Stripe:
+
+  - **Cards:** Visa, Mastercard, American Express, and Discover
+  - **Digital wallets:** Apple Pay and Google Pay
+  - **Link:** Stripe's one-click checkout for saved payment details
+
+  All transactions are encrypted and processed in accordance with PCI DSS standards.
+</Accordion>
+
+<Accordion title="Why was my payment declined?">
+  There are a few common reasons a payment might be declined:
+
+  - Insufficient funds or credit limit reached
+  - Incorrect billing address entered at checkout
+  - Your card issuer blocked the transaction
+
+  Try re-entering your card details carefully, or use a different card or payment method. If the problem persists after trying another card, contact your bank directly — they can tell you why the charge was blocked.
+</Accordion>
+
+<Accordion title="How do I request a refund?">
+  To request a refund, navigate to **My Orders**, select the relevant order, and click **Request Refund**. Refunds are subject to the refund policy set by the event organiser, which is displayed on the event page. If the refund option is not available, the policy window for that event may have closed.
+
+  <Note>
+    Refund eligibility is determined per event. Check the event page for the specific policy before purchasing.
+  </Note>
+</Accordion>
+
+<Accordion title="How long does a refund take?">
+  Once a refund is approved, it typically takes **5–10 business days** to appear on your statement. The exact timing depends on your card issuer's processing schedule. If your refund hasn't appeared after 10 business days, contact your bank before reaching out to support.
+</Accordion>
+
+<Accordion title="Can I get a refund after the event?">
+  No. Refunds are only available before the event starts and must be requested within the event's refund policy window. Once the event has begun, all sales are final.
+
+  <Warning>
+    Post-event refund requests cannot be processed. Make sure you review the refund policy before completing your purchase.
+  </Warning>
+</Accordion>
+
+---
+
+## Account & Access
+
+<Accordion title="How do I change my email or password?">
+  Go to **Settings → Profile** to update your display name or contact preferences. If you signed up using Kellogg Single Sign-On (SSO), your email and password are managed through the Kellogg identity portal — changes made there will automatically apply to your Ticket Hub account.
+</Accordion>
+
+<Accordion title="Can I save my payment method?">
+  Yes. During checkout, check the **Save payment method** box to store your card securely for future purchases. You can also add, update, or remove saved payment methods at any time by going to **Settings → Payment Methods**.
+
+  <Tip>
+    Saving your payment method speeds up checkout and lets you use Apple Pay or Google Pay on supported devices without re-entering details.
+  </Tip>
+</Accordion>
+
+<Accordion title="I lost my ticket QR code — how do I get it again?">
+  Don't worry — you can retrieve your ticket at any time. Go to **My Orders**, select the relevant order, and click **Download Ticket** to save or print a fresh copy of your QR code. Your original confirmation email also contains the QR code, so check your inbox (and spam folder) if you need a quick copy.
+</Accordion>
+
+<Accordion title="How do I delete my account?">
+  To permanently delete your account, go to **Settings → Account → Delete Account** and follow the confirmation steps. All personal data associated with your account will be removed within 30 days of your request, in accordance with our data retention policy.
+
+  <Warning>
+    Account deletion is permanent and cannot be undone. Download any order history or tickets you need before proceeding.
+  </Warning>
+</Accordion>
+
+---
+
+## API & Developers
+
+<Accordion title="Where do I find my API key?">
+  Navigate to **Settings → API Keys** to view your existing keys. Click **Generate new key** to create a new one. Keep your API keys secure — treat them like passwords and never expose them in client-side code or public repositories.
+</Accordion>
+
+<Accordion title="Is there a sandbox or test environment?">
+  Yes. Kellogg Ticket Hub provides a full test environment for development. Use test API keys — prefixed with `kth_test_sk_` — to create test checkout sessions without processing real charges. Test mode mirrors the live API but uses Stripe's test card numbers, so you can simulate the full purchase flow safely.
+
+  <Tip>
+    Use Stripe's test card `4242 4242 4242 4242` (any future expiry and CVC) to simulate a successful payment in test mode.
+  </Tip>
+</Accordion>
+
+<Accordion title="How do I test webhooks locally?">
+  Because webhooks require a publicly accessible HTTPS endpoint, you'll need a tunnelling tool to expose your local development server. Use [ngrok](https://ngrok.com) or a similar service to create a public URL that forwards traffic to your localhost, then register that URL as a webhook endpoint in **Settings → Webhooks**.
+
+  <Steps>
+    <Step title="Install and start ngrok">
+      Run `ngrok http 3000` (replace `3000` with your local port) to get a public HTTPS URL.
+    </Step>
+    <Step title="Register the endpoint">
+      Go to **Settings → Webhooks** and add your ngrok URL as a new webhook endpoint.
+    </Step>
+    <Step title="Trigger a test event">
+      Use the **Send test event** button in the webhook settings to verify your handler receives and processes the payload correctly.
+    </Step>
+    <Step title="Check delivery logs">
+      Review request and response details in the webhook delivery log to confirm your endpoint returned HTTP 200.
+    </Step>
+  </Steps>
+
+  <Note>
+    ngrok URLs change each time you restart the tunnel unless you're on a paid plan. Update your webhook endpoint URL in settings whenever it changes.
+  </Note>
+</Accordion>

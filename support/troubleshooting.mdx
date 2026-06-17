@@ -1,0 +1,165 @@
+---
+title: "Troubleshoot Payments, Tickets, and API Issues in Ticket Hub"
+sidebarTitle: "Troubleshooting"
+description: "Diagnose and fix common issues with ticket purchases, payment processing, QR code scanning, and Kellogg Ticket Hub API integration."
+---
+
+This guide helps you diagnose and resolve common issues you might encounter when purchasing tickets, processing payments, or integrating with the Kellogg Ticket Hub API. Work through the relevant section below, and if you're still stuck, the [Getting Help](#getting-help) section at the bottom explains how to reach the support team.
+
+## Payment Issues
+
+<Accordion title="My payment was declined">
+  A declined payment usually points to one of a few root causes. Work through the following checks in order:
+
+  <Steps>
+    <Step title="Verify your card details">
+      Double-check that the card number, expiry date, CVC, and billing address you entered match exactly what's on file with your card issuer. A single incorrect digit will cause the charge to fail.
+    </Step>
+    <Step title="Confirm your card supports online purchases">
+      Some debit cards and prepaid cards are restricted to in-person use only. Contact your bank to confirm online transactions are enabled for your card.
+    </Step>
+    <Step title="Try a different payment method">
+      If the details are correct but the payment still fails, try a different card or switch to Apple Pay, Google Pay, or Link to complete your purchase.
+    </Step>
+    <Step title="Contact your card issuer">
+      If every payment method you try is declined, your card issuer may have flagged the transaction. Call the number on the back of your card to find out why and ask them to authorise the charge.
+    </Step>
+  </Steps>
+
+  <Note>
+    Kellogg Ticket Hub does not store or have visibility into the reason codes returned by your bank. Your card issuer is the authoritative source for why a specific decline occurred.
+  </Note>
+</Accordion>
+
+<Accordion title="I was charged but didn't receive a ticket">
+  If your card was charged but your ticket hasn't arrived, follow these steps before contacting support:
+
+  <Steps>
+    <Step title="Check your spam or junk folder">
+      Confirmation emails occasionally get filtered. Search your inbox for an email from `no-reply@kelloggtickets.com` and check your spam folder if it doesn't appear in your main inbox.
+    </Step>
+    <Step title="Check My Orders">
+      Go to **My Orders**. If the order shows a status of **Confirmed**, your ticket was issued successfully. Use the **Resend Confirmation Email** button to send yourself a fresh copy.
+    </Step>
+    <Step title="Wait for processing to complete">
+      If the order isn't visible yet, your payment may still be processing. Wait up to 5 minutes and refresh the page before taking further action.
+    </Step>
+    <Step title="Contact support if the issue persists">
+      If your order still hasn't appeared after 15 minutes, contact support and include your payment reference number (visible in your bank statement or card app). The team can reconcile the charge and issue your ticket manually.
+    </Step>
+  </Steps>
+</Accordion>
+
+<Accordion title="Checkout session expired">
+  Kellogg Ticket Hub checkout sessions expire after **24 hours**. If you try to complete a payment on an expired session, you'll see an expiry error and the checkout will not proceed.
+
+  To retry, return to the event page and start a new checkout session. Your cart is not saved between sessions, so you'll need to reselect your ticket type.
+
+  <Tip>
+    If you're building an integration, don't store or cache checkout session IDs for longer than 24 hours. Refresh the session by creating a new one if the user hasn't completed checkout within that window.
+  </Tip>
+</Accordion>
+
+---
+
+## Ticket Issues
+
+<Accordion title="My QR code isn't scanning at the door">
+  If the venue scanner can't read your QR code, try the following:
+
+  - **Increase your screen brightness** to maximum — low brightness is the most common cause of scan failures in indoor lighting.
+  - **Use a saved image instead of a screenshot.** Go to **My Orders → Download Ticket** and show the downloaded image file rather than a screenshot, which may introduce compression artefacts.
+  - **Ask event staff to look you up manually.** Staff can verify your ticket using your name and email address if the scanner can't read the code.
+  - **Confirm your ticket status.** Go to **My Orders** and make sure the ticket status shows as **Confirmed**. Tickets with a status of **Cancelled** or **Transferred** are no longer valid for entry.
+</Accordion>
+
+<Accordion title="I can't transfer my ticket">
+  Ticket transfers aren't available for every event. If the transfer option isn't showing up, check the following:
+
+  - **Review the event's transfer policy.** Open the event page and look for the transfer policy section. Some organisers disable transfers entirely.
+  - **Check the timing.** Transfers are only available before the event's check-in window opens. Once check-in begins, transfers are locked.
+  - **Confirm the recipient has an account.** The person you're transferring to must already have a Kellogg Ticket Hub account registered with the email address you're sending the transfer to.
+
+  <Note>
+    If transfers are disabled for an event, this cannot be overridden. Contact the event organiser directly if you have extenuating circumstances.
+  </Note>
+</Accordion>
+
+---
+
+## API & Integration Issues
+
+<Accordion title="401 Unauthorized error">
+  A `401 Unauthorized` response means the API couldn't authenticate your request. Check the following:
+
+  - **Your API key is missing or malformed.** Confirm you're passing the key in the `Authorization` header using Bearer token format: `Authorization: Bearer kth_live_sk_...`
+  - **Your API key has been revoked.** Go to **Settings → API Keys** to check the status of your key. If it's been revoked, generate a new one and update your integration.
+  - **You're using a test key in live mode.** Test keys (prefixed `kth_test_sk_`) return `401` when used against live mode endpoints. Ensure you're using a live key (`kth_live_sk_`) in your production environment.
+
+  <Warning>
+    Never expose your live API key in client-side JavaScript or public source code repositories. If a key is compromised, revoke it immediately from **Settings → API Keys** and generate a replacement.
+  </Warning>
+</Accordion>
+
+<Accordion title="422 Unprocessable Entity">
+  A `422 Unprocessable Entity` response means your request was received but couldn't be processed because the body is missing required fields or contains invalid values.
+
+  <Steps>
+    <Step title="Read the error message">
+      Check the `error.message` field in the JSON response body — it will describe exactly which field failed validation and why.
+    </Step>
+    <Step title="Review the API Reference">
+      Cross-reference your request payload against the required parameters listed in the API Reference for that endpoint. Pay close attention to field types, formats, and any conditional requirements.
+    </Step>
+    <Step title="Fix and retry">
+      Correct the identified fields in your request body and retry the call. Use the test environment (`kth_test_sk_`) to iterate without affecting live data.
+    </Step>
+  </Steps>
+</Accordion>
+
+<Accordion title="Webhooks not being delivered">
+  If events aren't reaching your webhook endpoint, work through these checks:
+
+  - **Confirm your endpoint is publicly accessible over HTTPS.** Kellogg Ticket Hub cannot deliver to private IPs, localhost URLs, or plain HTTP endpoints.
+  - **Check your server responds within 30 seconds.** Webhook delivery attempts time out after 30 seconds. If your handler takes longer to process, respond with HTTP 200 immediately and handle the payload asynchronously.
+  - **Review the delivery log.** Go to **Settings → Webhooks** and open the delivery log for your endpoint. Each delivery attempt shows the HTTP status returned and any error detail, which helps pinpoint whether the issue is on the delivery or handling side.
+  - **Check your firewall rules.** Ensure your server or hosting platform isn't blocking inbound requests from Kellogg Ticket Hub's IP ranges. Contact support if you need the current list of IPs to allowlist.
+
+  <Tip>
+    During development, use [ngrok](https://ngrok.com) to expose your local server as a temporary public HTTPS endpoint. See the [FAQ](/support/faq#api--developers) for a step-by-step guide.
+  </Tip>
+</Accordion>
+
+<Accordion title="Webhook signature verification failing">
+  Signature verification failures almost always come down to one of two causes:
+
+  - **You're verifying against a parsed object instead of the raw body.** The HMAC signature is computed over the raw request body bytes as received. If you parse the JSON first and then re-serialise it, the byte sequence may differ and the signature won't match. Always pass the raw, unparsed request body to your HMAC function.
+  - **You're using the wrong signing secret.** Each webhook endpoint has its own unique signing secret. Go to **Settings → Webhooks**, select your endpoint, and copy the signing secret shown there. Make sure this value — and not an API key or any other credential — is what you're using to verify the signature.
+
+  <Warning>
+    Rotate your signing secret immediately if you suspect it has been exposed. You can generate a new one from **Settings → Webhooks** without needing to delete and recreate the endpoint.
+  </Warning>
+</Accordion>
+
+---
+
+## Getting Help
+
+If none of the steps above resolve your issue, the support team is ready to help. To speed up your case, include your **account email address**, your **order or ticket ID**, and a brief **description of the problem** (including any error messages) in your message.
+
+<CardGroup cols={2}>
+  <Card
+    title="Browse the FAQ"
+    icon="circle-question"
+    href="/support/faq"
+  >
+    Find quick answers to common questions about purchasing, refunds, and account management.
+  </Card>
+  <Card
+    title="Contact Support"
+    icon="envelope"
+    href="mailto:support@kellogg.edu"
+  >
+    Email the support team at support@kellogg.edu for help with any issue not covered in this guide.
+  </Card>
+</CardGroup>

@@ -1,0 +1,85 @@
+---
+title: "How Stripe-Powered Payments Work on Kellogg Ticket Hub"
+sidebarTitle: "Payments"
+description: "Discover how Kellogg Ticket Hub uses Stripe to process payments securely, which payment methods are accepted, and what each payment status means."
+---
+
+Kellogg Ticket Hub processes all payments through [Stripe](https://stripe.com), a PCI-compliant payment platform trusted by thousands of businesses worldwide. Your card data never touches Kellogg Ticket Hub's servers — it travels directly from your browser to Stripe, which returns a secure token that the platform uses to confirm and record your purchase. This architecture keeps your financial information safe by design.
+
+## Payment Flow
+
+When you check out for an event, the following steps happen in sequence:
+
+<Steps>
+  <Step title="Initiate Checkout">
+    You select your tickets and proceed to checkout. Kellogg Ticket Hub creates a Stripe Checkout Session and reserves your seats for up to 15 minutes.
+  </Step>
+  <Step title="Stripe Presents the Payment Form">
+    You are redirected to (or shown) the Stripe-hosted payment form. This page is served directly by Stripe, not by Kellogg Ticket Hub.
+  </Step>
+  <Step title="You Enter Payment Details">
+    You type your card number, expiry, CVC, and billing address — or select a saved payment method or digital wallet. These details go straight to Stripe and are never forwarded to Kellogg Ticket Hub.
+  </Step>
+  <Step title="Stripe Confirms Payment">
+    Stripe authorises the charge with your card network and notifies Kellogg Ticket Hub via a secure webhook that the payment has succeeded.
+  </Step>
+  <Step title="Ticket Hub Creates and Emails Your Tickets">
+    Kellogg Ticket Hub receives the confirmation, generates your confirmed ticket records, and sends QR codes to your registered email address.
+  </Step>
+</Steps>
+
+## Supported Payment Methods
+
+<CardGroup cols={3}>
+  <Card title="Cards" icon="credit-card">
+    Visa, Mastercard, American Express, and Discover credit and debit cards are accepted.
+  </Card>
+  <Card title="Digital Wallets" icon="mobile">
+    Apple Pay and Google Pay are supported on compatible devices and browsers.
+  </Card>
+  <Card title="Link" icon="link">
+    Stripe's Link network lets returning Stripe customers check out instantly using saved payment details from other Link-enabled sites.
+  </Card>
+</CardGroup>
+
+## Payment Statuses
+
+Every payment moves through a series of statuses that reflect where it is in the processing pipeline. The table below explains each one.
+
+| Status | Meaning |
+|---|---|
+| `requires_payment_method` | The checkout session is open and waiting for you to enter or select a payment method. |
+| `requires_confirmation` | Payment details have been collected and the charge is ready to be confirmed. |
+| `processing` | Stripe is communicating with your card network to authorise the charge. |
+| `succeeded` | The payment has been authorised and captured. Your tickets are confirmed. |
+| `canceled` | The checkout session expired or was abandoned before payment was completed. Your seat reservation has been released. |
+
+<Note>
+  If a payment moves to `canceled`, no charge has been made to your card. You can start a new checkout session at any time while the event still has available capacity.
+</Note>
+
+## Currency
+
+All transactions on Kellogg Ticket Hub are processed in **US Dollars (USD)**. Ticket prices displayed on the platform are always in USD. If your card is issued in a different currency, your bank applies its own exchange rate and may charge a foreign transaction fee — check with your card issuer for details.
+
+## Receipts and Confirmations
+
+After a successful payment you receive two separate emails:
+
+1. **Stripe receipt** — sent by Stripe to your billing email, this confirms the charge amount, last four card digits, and a transaction reference.
+2. **Ticket confirmation** — sent by Kellogg Ticket Hub to your account email, this contains your event details and QR code(s) for entry.
+
+<Tip>
+  If your payment fails, double-check your card number, expiry date, CVC, and billing postcode before retrying. Mismatched billing information is the most common cause of declined payments. If the problem persists, try a different card or contact your bank to confirm the transaction is not being blocked.
+</Tip>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Purchasing Tickets" icon="cart-shopping" href="/guides/purchasing-tickets">
+    Follow the step-by-step guide to completing a ticket purchase from start to finish.
+  </Card>
+  <Card title="Refunds and Cancellations" icon="rotate-left" href="/guides/refunds-cancellations">
+    Learn how to cancel a ticket and what to expect during the refund process.
+  </Card>
+</CardGroup>
